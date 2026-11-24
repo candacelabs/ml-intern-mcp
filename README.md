@@ -1,89 +1,60 @@
 # ML Intern MCP
 
-Use HuggingChat’s ML Intern Hub tools from Codex or another MCP client. Read papers and checkpoints, inspect datasets, run Hub Jobs, and work inside a sandbox across multiple tool calls. Your client supplies the model and agent loop. This server runs Hugging Face’s pinned `intern` tool handlers. [HuggingChat preset](https://github.com/huggingface/chat-ui/blob/7fc0f672685331f11317a448f24c1c66b64894c6/src/lib/server/mlAssistant.ts) · [Hub tools](https://github.com/huggingface/hf-mcp-server/blob/df77feaa49795d7fd11dc472f4fa067e7bd2f542/packages/app/src/shared/bouquet-presets.ts)
+Use HuggingChat’s ML Intern tools from Codex to read papers, inspect model checkpoints and datasets, and run Hugging Face Jobs. Codex handles the conversation. This server supplies the tools.
 
-**BYOS means Bring Your Own Sandbox.** Point the same four MCP tools at an existing **Hugging Face sandbox, exe.dev VM, or Modal Sandbox**. You choose the provider and sandbox ID on each call. The provider owns the runtime and permissions, and you control its lifetime and billing. Closing the MCP client leaves the sandbox running. [Runnable examples](examples/)
+**Bring your own sandbox (BYOS).** Run commands and work with files on an existing Hugging Face sandbox, exe.dev VM, or Modal Sandbox. You control its lifetime and cost. Disconnecting leaves it running.
 
-## Run the server
+## Get started
 
-With Node.js 22.14 or newer installed, clone the private repository and install its locked runtime dependencies.
+You’ll need Node.js 22.14 or newer and access to this private repository.
 
 ```sh
 git clone git@github.com:candacelabs/ml-intern-mcp.git
 cd ml-intern-mcp
 npm ci --omit=dev
-npm run start:http
 ```
 
-This starts `node server.mjs --http --byos` at `http://127.0.0.1:8787/mcp`. Check the listener with `curl -fsS http://127.0.0.1:8787/healthz`. For **stdio**, configure the absolute paths to `node` and `server.mjs` followed by `--byos`. Run `node server.mjs --help` for listener options.
-
-| Server mode | Tools advertised |
-| --- | --- |
-| `--public-files`, on either transport | `hf_fs` for public files and papers |
-| Full server, anonymous caller | `hf_fs`, `hub_repo_details`, `hf_whoami` |
-| Full server, verified Hub credential | All three public tools plus `hf_fs_write`, `create_repo`, `hf_jobs`, `hf_sandbox`, `hf_sandbox_exec`, `hf_sandbox_fs` |
-| `--byos`, on either transport | The Hub tools available to the caller, plus `sandbox_status`, `sandbox_exec`, `sandbox_read_file`, and `sandbox_write_file` |
+From this checkout, you can [try your sandbox](#work-with-an-existing-sandbox) or [connect Codex](#connect-codex).
 
 ## Work with an existing sandbox
 
-Use your own ID and credential for the provider you choose. The JSON examples include request arguments and illustrative results for all four tools.
+Choose your provider and export its credentials in your shell. Each provider example shows the requests and results.
 
-| Provider | Which sandbox | Stdio environment | HTTP headers | Example |
-| --- | --- | --- | --- | --- |
-| `hf` | Dedicated HF Job running `sbx-server`. Use `NAMESPACE/JOB_ID` or `hfsb2:NAMESPACE:JOB_ID` with the original token. The caller must own the Job or be its recorded creator. | `HF_TOKEN` | `X-HF-Token` | [Hugging Face](examples/hf.json) |
-| `exe.dev` | Existing exe.dev VM name, such as `my-research-vm`. The API token needs permission to run `ssh <vm-name>` through exe.dev’s HTTPS API. | `EXE_TOKEN` | `X-Exe-Token` | [exe.dev](examples/exe-dev.json) |
-| `modal` | Existing Modal Sandbox object ID starting with `sb-`. Use credentials for its workspace. | `MODAL_TOKEN_ID`, `MODAL_TOKEN_SECRET` | `X-Modal-Token-Id`, `X-Modal-Token-Secret` | [Modal](examples/modal.json) |
+| Provider | Sandbox to use | Credentials |
+| --- | --- | --- |
+| [Hugging Face](examples/hf.json) | A dedicated sandbox Job you own or created, identified by `NAMESPACE/JOB_ID` | Its original `HF_TOKEN` |
+| [exe.dev](examples/exe-dev.json) | A VM name, such as `my-research-vm` | `EXE_TOKEN` with permission to run `ssh <vm-name>` |
+| [Modal](examples/modal.json) | A Sandbox ID beginning with `sb-` | Its workspace’s `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET` |
 
-From the checkout, run **one** of the following against the shared endpoint. Set the ID variable on that line to your existing sandbox.
+Run the line for your provider, replacing the quoted value with your own sandbox ID.
 
 ```sh
-node examples/run.mjs hf "$HF_SANDBOX_ID" --url http://127.0.0.1:8787/mcp
-node examples/run.mjs exe.dev "$EXE_VM" --url http://127.0.0.1:8787/mcp
-node examples/run.mjs modal "$MODAL_SANDBOX_ID" --url http://127.0.0.1:8787/mcp
+node examples/run.mjs hf "NAMESPACE/JOB_ID"
+node examples/run.mjs exe.dev "my-research-vm"
+node examples/run.mjs modal "sb-YOUR-SANDBOX-ID"
 ```
 
-The runner checks status and runs `printf ml-intern-ok`. Omit `--url` to use stdio. Add `--read-path /path` to inspect a UTF-8 file. With `--write-path /tmp/my-scratch-file`, the runner writes `hello\n` to that path and reads it back. An existing file at the write path is replaced.
-
-Every tool takes `provider` and `sandboxId` and echoes both in its structured result.
-
-| Tool | Additional inputs | Result fields |
-| --- | --- | --- |
-| `sandbox_status` | — | `state` (`running`, `stopped`, or `unknown`) |
-| `sandbox_exec` | `command`, optional `cwd`, `stdin`, `timeoutSeconds` | `stdout`, `stderr`, `exitCode`, `timedOut` |
-| `sandbox_read_file` | Absolute `path`, optional `maxBytes` | `text`, `bytes`, `truncated` |
-| `sandbox_write_file` | Absolute `path`, UTF-8 `text` | `bytes` |
-
-For example, send these parameters to MCP’s `tools/call` for an existing exe.dev VM.
-
-```json
-{"name":"sandbox_exec","arguments":{"provider":"exe.dev","sandboxId":"my-research-vm","command":"printf ml-intern-ok"}}
-```
-
-On success, the response’s `structuredContent` contains the command output and exit status.
-
-```json
-{"provider":"exe.dev","sandboxId":"my-research-vm","stdout":"ml-intern-ok","stderr":"","exitCode":0,"timedOut":false}
-```
-
-Each exec call starts a shell. Files persist between calls in the same running sandbox. Pass `cwd` when a command needs a particular working directory. The timeout defaults to 30 seconds and can be set up to 55. Each output stream is limited to 1 MiB. File reads default to 20,000 bytes, and a read or write can transfer up to 100,000 UTF-8 bytes per call. Provider failures return MCP tool errors. A command’s nonzero exit code is a normal result. [Input and output schemas](byos.openapi.yaml) · [Provider prerequisites and examples](examples/README.md)
+The runner checks that the sandbox is running, then runs `printf ml-intern-ok`. Look for `ml-intern-ok` in stdout and an exit code of `0`. [Finding your ID and trying file operations](examples/README.md)
 
 ## Connect Codex
 
-**Using your existing Hugging Face app connection.** Start the HTTP server with `node server.mjs --http --public-files`. In another shell in the same checkout, register the endpoint and link the skill.
+**To use your sandbox**, start the server from the checkout and leave it running.
 
 ```sh
-codex mcp add ml_intern --url http://127.0.0.1:8787/mcp
-mkdir -p "$HOME/.agents/skills"
-test -e "$HOME/.agents/skills/ml-intern" || ln -s "$PWD/skills/ml-intern" "$HOME/.agents/skills/ml-intern"
+npm run start:http
 ```
 
-In a new Codex session, ask **“Use $ml-intern to check my Hugging Face account and read the BERT checkpoint config.”** The skill routes identity and Jobs to your connected app and the public file read to this server. For the same pairing over stdio, register `codex mcp add ml_intern -- "$(command -v node)" "$PWD/server.mjs" --public-files`.
+Copy the server entry from [examples/codex.toml](examples/codex.toml) into `~/.codex/config.toml`. Keep the credential mappings for the providers you use. Start a new Codex session with those variables exported and try a request like this one, substituting your VM name.
 
-**Connecting to a BYOS server.** Start the service with `--byos`. In `~/.codex/config.toml`, add the endpoint and the environment-to-header mappings for the providers you use. A client calling only exe.dev or Modal can omit the Hugging Face mapping. For a shared deployment, replace the loopback URL with its HTTPS endpoint. [Example Codex configuration](examples/codex.toml)
+> On my exe.dev VM `my-research-vm`, run `pwd` and tell me which directory it returned.
+
+<details>
+<summary>Codex configuration for the local server</summary>
 
 ```toml
 [mcp_servers.ml_intern_byos]
 url = "http://127.0.0.1:8787/mcp"
+
 [mcp_servers.ml_intern_byos.env_http_headers]
 "X-HF-Token" = "HF_TOKEN"
 "X-Exe-Token" = "EXE_TOKEN"
@@ -91,31 +62,128 @@ url = "http://127.0.0.1:8787/mcp"
 "X-Modal-Token-Secret" = "MODAL_TOKEN_SECRET"
 ```
 
-## Deploy a shared endpoint
+</details>
 
-Run the server behind your authenticated TLS reverse proxy. Set the public origin to the address clients use, and configure the proxy to preserve `Host`, `Origin`, and streaming responses.
+**Already using the Hugging Face app in Codex?** Your app connection handles account identity and Jobs. Add this server for public file and paper reads. Codex starts it when needed.
 
 ```sh
-node server.mjs --http --byos --host 127.0.0.1 --port 8787 --public-origin https://mcp.example.com
+codex mcp add ml_intern -- "$(command -v node)" "$PWD/server.mjs" --public-files
 ```
 
-For a proxy in another container, bind the server to its private network interface and restrict direct access to the backend port. The listener checks the host and browser origin. Your proxy owns gateway access and the `Authorization` header. Provider credentials come from the current HTTP request. Each adapter receives only its own credentials. Exclude these headers from proxy logs. A proxy injecting credentials must overwrite incoming values with the authenticated caller’s credentials. The example runner reads an optional gateway bearer token from `ML_INTERN_PROXY_TOKEN`.
+In a new Codex session, try **“Read the config for `google-bert/bert-base-uncased`. How many transformer layers does it have?”** The checkpoint has 12.
 
-`GET /healthz` reports listener health. The sandbox probe checks provider connectivity. SIGTERM stops accepting new connections and gives active HTTP requests up to 15 seconds to drain. The sandbox remains under its owner’s control when the MCP process stops.
+<details>
+<summary>Install the optional ML Intern skill for Codex</summary>
 
-## Contract and verification
+From the checkout, link the skill so Codex can use its instructions for choosing Hub tools and reproducing papers.
 
-`openapi.yaml` describes the upstream Hub preset and Jobs operations. `byos.openapi.yaml` defines the four portable tools and their provider credential headers. Both transports use the same generated tool definitions. Pass a connected MCP SDK client to `createMlInternClient` for the Hub or `createByosClient` for a sandbox. [Hub contract](openapi.yaml) · [BYOS contract](byos.openapi.yaml) · [Generated bindings](generated/)
+```sh
+mkdir -p "$HOME/.agents/skills"
+test -e "$HOME/.agents/skills/ml-intern" || ln -s "$PWD/skills/ml-intern" "$HOME/.agents/skills/ml-intern"
+```
 
-From a development checkout, install the full dependency set with `npm ci`.
+In a new session, try **“Use $ml-intern to check my Hugging Face account and read the BERT checkpoint config.”**
 
-| Command | What it checks |
+</details>
+
+## Sandbox tools
+
+Every call takes a `provider` and `sandboxId` and returns both in the result. Files persist between calls in the same running sandbox. Each command starts a fresh shell.
+
+| Tool | What you supply | What you get back |
+| --- | --- | --- |
+| `sandbox_status` | Just the provider and ID | `state` (`running`, `stopped`, or `unknown`) |
+| `sandbox_exec` | A `command`, optionally `cwd`, `stdin`, and `timeoutSeconds` | `stdout`, `stderr`, `exitCode`, and `timedOut` |
+| `sandbox_read_file` | An absolute `path`, optionally `maxBytes` | UTF-8 `text`, byte count, and `truncated` |
+| `sandbox_write_file` | An absolute `path` and UTF-8 `text` | Number of `bytes` written |
+
+<details>
+<summary>Example command, response, and limits</summary>
+
+Send these parameters to MCP’s `tools/call` method.
+
+```json
+{
+  "name": "sandbox_exec",
+  "arguments": {
+    "provider": "exe.dev",
+    "sandboxId": "my-research-vm",
+    "command": "printf ml-intern-ok",
+    "timeoutSeconds": 10
+  }
+}
+```
+
+A successful response has this `structuredContent`.
+
+```json
+{
+  "provider": "exe.dev",
+  "sandboxId": "my-research-vm",
+  "stdout": "ml-intern-ok",
+  "stderr": "",
+  "exitCode": 0,
+  "timedOut": false
+}
+```
+
+- Commands have a 30-second default timeout, a 55-second maximum, and a 1 MiB limit on each output stream. A nonzero exit code is part of the result. Provider failures return MCP tool errors.
+- Reads default to 20,000 bytes. Each file call can transfer up to 100,000 UTF-8 bytes. To try a write, give the runner `--write-path` and a scratch path you own. It replaces that file with `hello\n` and reads it back.
+
+[Sandbox input and output schemas](byos.openapi.yaml)
+
+</details>
+
+## Deployment and development
+
+<details>
+<summary>Server modes and Hugging Face tools</summary>
+
+| Mode | Tools available |
 | --- | --- |
-| `npm test` | Generated bindings and types, actual stdio and HTTP clients, caller isolation, all provider adapters against fixtures, and the example requests and results |
-| `npm run check:drift` | HuggingChat’s current preset, live public schemas and a pinned BERT file read, plus all nine tool schemas and 15 Jobs operations from the pinned package using an offline identity |
-| `node examples/run.mjs PROVIDER ID` | An existing sandbox on any of the three providers, using the operator’s credential |
-| `npm run check:sandbox -- HANDLE` | Hugging Face’s native `hf_sandbox*` tool path, including health, command execution, and root directory metadata |
+| Default, anonymous | `hf_fs`, `hub_repo_details`, `hf_whoami` |
+| Default, verified Hub credential | The public tools plus `hf_fs_write`, `create_repo`, `hf_jobs`, `hf_sandbox`, `hf_sandbox_exec`, and `hf_sandbox_fs` |
+| `--public-files` | `hf_fs` for public file and paper reads |
+| `--byos` | The caller’s Hub tools plus the four sandbox tools above |
 
-**Verified for v0.3.0.** All three runnable examples passed their four operations through the HTTP server against provider fixtures. Codex discovered the tools in a clean package install, read a live public BERT checkpoint, and ran the exe.dev example command against a fixture. Live sandbox execution still needs a check with an operator-owned ID and its credential.
+The server uses stdio by default. Add `--http` for Streamable HTTP. `npm run start:http` enables both HTTP and BYOS. To try the sandbox example over HTTP, append `--url http://127.0.0.1:8787/mcp` to the runner command.
 
-After updating the upstream pin, run `npm run capture`, review the OpenAPI diff, then run `npm run generate` and the checks above. [Upstream licenses](notices/)
+To pair the Hugging Face app with public file reads over HTTP, start `node server.mjs --http --public-files` and register it with `codex mcp add ml_intern --url http://127.0.0.1:8787/mcp`.
+
+</details>
+
+<details>
+<summary>Deploy a shared HTTP endpoint</summary>
+
+Run the server behind an authenticated TLS reverse proxy. Use the proxy’s HTTPS URL in the Codex configuration.
+
+```sh
+node server.mjs --http --byos --host 127.0.0.1 --port 8787 \
+  --public-origin https://mcp.example.com
+```
+
+- **Networking.** Preserve `Host`, `Origin`, and streaming responses. The listener checks the host and browser origin. If the proxy runs in another container, bind to a private interface and restrict access to the backend port.
+- **Credentials.** The proxy handles gateway access via `Authorization`. Each adapter receives its provider’s credentials from the current request. Exclude credential headers from proxy logs. If the proxy injects credentials, overwrite incoming values with the authenticated caller’s values. The example runner accepts a gateway token via `ML_INTERN_PROXY_TOKEN`.
+- **Health and shutdown.** `GET /healthz` checks the listener. Run a provider example to check sandbox connectivity. On SIGTERM, the listener stops accepting connections and gives active requests up to 15 seconds to finish.
+
+</details>
+
+<details>
+<summary>Contracts, generated clients, and verification</summary>
+
+The server runs Hugging Face’s pinned `intern` handlers. Both transports use the same generated tool definitions. Pass a connected MCP SDK client to `createMlInternClient` for Hub tools or `createByosClient` for sandbox tools. [Hub contract](openapi.yaml) · [Sandbox contract](byos.openapi.yaml) · [Generated clients](generated/)
+
+Install development dependencies with `npm ci`.
+
+| Command | Checks |
+| --- | --- |
+| `npm test` | Generated bindings and types, stdio and HTTP, caller isolation, provider fixtures, and runnable examples |
+| `npm run check:drift` | HuggingChat’s current preset, live public tool schemas and a pinned BERT file, plus nine tool schemas and 15 Jobs operations from the pinned package |
+| `npm run check:sandbox -- HANDLE` | Health, shell, and root directory metadata on your existing sandbox via Hugging Face’s native tools |
+| `node examples/run.mjs PROVIDER ID` | Your provider’s status and command execution on an existing sandbox |
+
+**Verification for v0.3.0.** All three providers passed status, command, read, and write checks through HTTP using fixtures. Codex read a live public BERT checkpoint from a clean install. Execution on live provider sandboxes remains unverified.
+
+After changing the upstream pin, run `npm run capture`, review the OpenAPI diff, run `npm run generate`, then rerun the checks. [HuggingChat preset](https://github.com/huggingface/chat-ui/blob/7fc0f672685331f11317a448f24c1c66b64894c6/src/lib/server/mlAssistant.ts) · [Upstream Hub tools](https://github.com/huggingface/hf-mcp-server/blob/df77feaa49795d7fd11dc472f4fa067e7bd2f542/packages/app/src/shared/bouquet-presets.ts) · [License notices](notices/)
+
+</details>
