@@ -1,0 +1,410 @@
+{
+  "anonymous": [
+    "sandbox_status",
+    "sandbox_exec",
+    "sandbox_read_file",
+    "sandbox_write_file"
+  ],
+  "tools": [
+    {
+      "name": "sandbox_status",
+      "description": "Check the state of an existing sandbox using the caller's provider credential.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider",
+          "sandboxId"
+        ],
+        "properties": {
+          "provider": {
+            "$ref": "#/$defs/Provider"
+          },
+          "sandboxId": {
+            "$ref": "#/$defs/SandboxId"
+          }
+        },
+        "$defs": {
+          "Provider": {
+            "type": "string",
+            "enum": [
+              "hf",
+              "exe.dev",
+              "modal"
+            ]
+          },
+          "SandboxId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "Hugging Face namespace/job ID or canonical handle, exe.dev VM name, or Modal sandbox ID."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider",
+          "sandboxId",
+          "state"
+        ],
+        "properties": {
+          "provider": {
+            "$ref": "#/$defs/Provider"
+          },
+          "sandboxId": {
+            "$ref": "#/$defs/SandboxId"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "running",
+              "stopped",
+              "unknown"
+            ]
+          }
+        },
+        "$defs": {
+          "Provider": {
+            "type": "string",
+            "enum": [
+              "hf",
+              "exe.dev",
+              "modal"
+            ]
+          },
+          "SandboxId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "Hugging Face namespace/job ID or canonical handle, exe.dev VM name, or Modal sandbox ID."
+          }
+        }
+      }
+    },
+    {
+      "name": "sandbox_exec",
+      "description": "Run one POSIX shell command inside an existing sandbox. Nonzero exit codes are returned as data.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider",
+          "sandboxId",
+          "command"
+        ],
+        "properties": {
+          "provider": {
+            "$ref": "#/$defs/Provider"
+          },
+          "sandboxId": {
+            "$ref": "#/$defs/SandboxId"
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16384
+          },
+          "cwd": {
+            "$ref": "#/$defs/Path"
+          },
+          "stdin": {
+            "type": "string",
+            "maxLength": 100000
+          },
+          "timeoutSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 55,
+            "default": 30
+          }
+        },
+        "$defs": {
+          "Provider": {
+            "type": "string",
+            "enum": [
+              "hf",
+              "exe.dev",
+              "modal"
+            ]
+          },
+          "SandboxId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "Hugging Face namespace/job ID or canonical handle, exe.dev VM name, or Modal sandbox ID."
+          },
+          "Path": {
+            "type": "string",
+            "pattern": "^/",
+            "maxLength": 4096,
+            "description": "Absolute POSIX path inside the sandbox."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider",
+          "sandboxId",
+          "stdout",
+          "stderr",
+          "exitCode",
+          "timedOut"
+        ],
+        "properties": {
+          "provider": {
+            "$ref": "#/$defs/Provider"
+          },
+          "sandboxId": {
+            "$ref": "#/$defs/SandboxId"
+          },
+          "stdout": {
+            "type": "string",
+            "description": "UTF-8 standard output",
+            "limited to 1 MiB.": null
+          },
+          "stderr": {
+            "type": "string",
+            "description": "UTF-8 standard error",
+            "limited to 1 MiB.": null
+          },
+          "exitCode": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "timedOut": {
+            "type": "boolean"
+          }
+        },
+        "$defs": {
+          "Provider": {
+            "type": "string",
+            "enum": [
+              "hf",
+              "exe.dev",
+              "modal"
+            ]
+          },
+          "SandboxId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "Hugging Face namespace/job ID or canonical handle, exe.dev VM name, or Modal sandbox ID."
+          }
+        }
+      }
+    },
+    {
+      "name": "sandbox_read_file",
+      "description": "Read a bounded prefix of a UTF-8 file at an absolute path in an existing sandbox.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider",
+          "sandboxId",
+          "path"
+        ],
+        "properties": {
+          "provider": {
+            "$ref": "#/$defs/Provider"
+          },
+          "sandboxId": {
+            "$ref": "#/$defs/SandboxId"
+          },
+          "path": {
+            "$ref": "#/$defs/Path"
+          },
+          "maxBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "default": 20000
+          }
+        },
+        "$defs": {
+          "Provider": {
+            "type": "string",
+            "enum": [
+              "hf",
+              "exe.dev",
+              "modal"
+            ]
+          },
+          "SandboxId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "Hugging Face namespace/job ID or canonical handle, exe.dev VM name, or Modal sandbox ID."
+          },
+          "Path": {
+            "type": "string",
+            "pattern": "^/",
+            "maxLength": 4096,
+            "description": "Absolute POSIX path inside the sandbox."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider",
+          "sandboxId",
+          "text",
+          "bytes",
+          "truncated"
+        ],
+        "properties": {
+          "provider": {
+            "$ref": "#/$defs/Provider"
+          },
+          "sandboxId": {
+            "$ref": "#/$defs/SandboxId"
+          },
+          "text": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Number of UTF-8 bytes of text."
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "$defs": {
+          "Provider": {
+            "type": "string",
+            "enum": [
+              "hf",
+              "exe.dev",
+              "modal"
+            ]
+          },
+          "SandboxId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "Hugging Face namespace/job ID or canonical handle, exe.dev VM name, or Modal sandbox ID."
+          }
+        }
+      }
+    },
+    {
+      "name": "sandbox_write_file",
+      "description": "Write or replace a UTF-8 file at an absolute path in an existing sandbox. Maximum 100000 UTF-8 bytes.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider",
+          "sandboxId",
+          "path",
+          "text"
+        ],
+        "properties": {
+          "provider": {
+            "$ref": "#/$defs/Provider"
+          },
+          "sandboxId": {
+            "$ref": "#/$defs/SandboxId"
+          },
+          "path": {
+            "$ref": "#/$defs/Path"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 100000
+          }
+        },
+        "$defs": {
+          "Provider": {
+            "type": "string",
+            "enum": [
+              "hf",
+              "exe.dev",
+              "modal"
+            ]
+          },
+          "SandboxId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "Hugging Face namespace/job ID or canonical handle, exe.dev VM name, or Modal sandbox ID."
+          },
+          "Path": {
+            "type": "string",
+            "pattern": "^/",
+            "maxLength": 4096,
+            "description": "Absolute POSIX path inside the sandbox."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider",
+          "sandboxId",
+          "bytes"
+        ],
+        "properties": {
+          "provider": {
+            "$ref": "#/$defs/Provider"
+          },
+          "sandboxId": {
+            "$ref": "#/$defs/SandboxId"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Number of UTF-8 bytes of text."
+          }
+        },
+        "$defs": {
+          "Provider": {
+            "type": "string",
+            "enum": [
+              "hf",
+              "exe.dev",
+              "modal"
+            ]
+          },
+          "SandboxId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "Hugging Face namespace/job ID or canonical handle, exe.dev VM name, or Modal sandbox ID."
+          }
+        }
+      }
+    }
+  ]
+}

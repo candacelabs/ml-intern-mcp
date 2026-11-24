@@ -2,9 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import openapiTS, { astToString } from 'openapi-typescript';
 import { parse } from 'yaml';
 
-const source = new URL('../openapi.yaml', import.meta.url);
-const destination = new URL('../generated/', import.meta.url);
-const header = '// Generated from openapi.yaml by npm run generate.\n';
+const root = new URL('../', import.meta.url);
 const componentPrefix = '#/components/schemas/';
 
 function componentName(reference, schemas) {
@@ -45,15 +43,16 @@ function standalone(reference, schemas) {
   return schema;
 }
 
-const runtime = `${header}import { fromJsonSchema } from '@modelcontextprotocol/server';
+function makeBindings(contract, prefix, header) {
+  const runtime = `${header}import { fromJsonSchema } from '@modelcontextprotocol/server';
 import catalog from './catalog.json' with { type: 'json' };
 
-export function listMlInternTools(authenticated = false) {
+export function list${prefix}Tools(authenticated = false) {
   const tools = authenticated ? catalog.tools : catalog.tools.filter(tool => catalog.anonymous.includes(tool.name));
   return structuredClone(tools);
 }
 
-export function createMlInternClient(client) {
+export function create${prefix}Client(client) {
   return Object.fromEntries(catalog.tools.map(tool => [
     tool.name,
     (args = {}, options) => client.callTool(
@@ -63,8 +62,8 @@ export function createMlInternClient(client) {
   ]));
 }
 
-export function registerMlInternTools(server, handlers, authenticated = false) {
-  const tools = listMlInternTools(authenticated);
+export function register${prefix}Tools(server, handlers, authenticated = false) {
+  const tools = list${prefix}Tools(authenticated);
   for (const { name } of tools) {
     if (typeof handlers[name] !== 'function') throw new Error('Missing handler for ' + name);
   }
@@ -78,7 +77,6 @@ export function registerMlInternTools(server, handlers, authenticated = false) {
 }
 `;
 
-function makeBindings(contract) {
   const schemas = contract.components.schemas;
   const entries = Object.entries(contract['x-mcp-tools']);
   const tools = [];
@@ -109,31 +107,31 @@ type StructuredResult<Output> = CallToolResult & (
   | { isError: true }
 );
 
-export interface MlInternInputs {
+export interface ${prefix}Inputs {
 ${inputs.join('\n')}
 }
 
-export interface MlInternResults {
+export interface ${prefix}Results {
 ${results.join('\n')}
 }
 
-export type MlInternToolName = keyof MlInternInputs;
-export type MlInternAnonymousToolName = ${anonymousNames.map(name => JSON.stringify(name)).join(' | ') || 'never'};
+export type ${prefix}ToolName = keyof ${prefix}Inputs;
+export type ${prefix}AnonymousToolName = ${anonymousNames.map(name => JSON.stringify(name)).join(' | ') || 'never'};
 type CallArgs<Args> = {} extends Args
   ? [args?: Args, options?: CallToolRequestOptions]
   : [args: Args, options?: CallToolRequestOptions];
 
-export type MlInternClient = {
-  [K in MlInternToolName]: (...params: CallArgs<MlInternInputs[K]>) => Promise<MlInternResults[K]>;
+export type ${prefix}Client = {
+  [K in ${prefix}ToolName]: (...params: CallArgs<${prefix}Inputs[K]>) => Promise<${prefix}Results[K]>;
 };
-export type MlInternHandlers = {
-  [K in MlInternToolName]: (args: MlInternInputs[K], context: ServerContext) => MlInternResults[K] | Promise<MlInternResults[K]>;
+export type ${prefix}Handlers = {
+  [K in ${prefix}ToolName]: (args: ${prefix}Inputs[K], context: ServerContext) => ${prefix}Results[K] | Promise<${prefix}Results[K]>;
 };
 
-export function listMlInternTools(authenticated?: boolean): Tool[];
-export function createMlInternClient(client: Pick<Client, 'callTool'>): MlInternClient;
-export function registerMlInternTools(server: McpServer, handlers: Pick<MlInternHandlers, MlInternAnonymousToolName>, authenticated?: false): void;
-export function registerMlInternTools(server: McpServer, handlers: MlInternHandlers, authenticated: boolean): void;
+export function list${prefix}Tools(authenticated?: boolean): Tool[];
+export function create${prefix}Client(client: Pick<Client, 'callTool'>): ${prefix}Client;
+export function register${prefix}Tools(server: McpServer, handlers: Pick<${prefix}Handlers, ${prefix}AnonymousToolName>, authenticated?: false): void;
+export function register${prefix}Tools(server: McpServer, handlers: ${prefix}Handlers, authenticated: boolean): void;
 `;
 
   const jobHelper = `
@@ -160,22 +158,32 @@ export function callMlInternJob<K extends keyof MlInternJobArgs>(
 const args = process.argv.slice(2);
 if (args.length && (args.length !== 1 || args[0] !== '--check')) throw new Error('Usage: node scripts/generate.mjs [--check]');
 const check = args[0] === '--check';
-const contract = parse(await readFile(source, 'utf8'));
-const files = makeBindings(contract);
-const ast = await openapiTS(contract, { emptyObjectsUnknown: true, defaultNonNullable: false });
-files['openapi.d.ts'] = header + astToString(ast);
-if (!check) await mkdir(destination, { recursive: true });
 const stale = [];
-for (const [name, expected] of Object.entries(files)) {
-  const path = new URL(name, destination);
-  let actual;
-  try {
-    actual = await readFile(path, 'utf8');
-  } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
+for (const [spec, folder, prefix] of [
+  ['openapi.yaml', 'generated/', 'MlIntern'],
+  ['byos.openapi.yaml', 'generated/byos/', 'Byos'],
+]) {
+  const header = `// Generated from ${spec} by npm run generate.\n`;
+  const contract = parse(await readFile(new URL(spec, root), 'utf8'));
+  const files = makeBindings(contract, prefix, header);
+  if (contract['x-byos-credential-headers']) {
+    files['credential-headers.json'] = JSON.stringify(contract['x-byos-credential-headers'], null, 2) + '\n';
   }
-  if (actual === expected) continue;
-  if (check) stale.push(name);
-  else await writeFile(path, expected);
+  const ast = await openapiTS(contract, { emptyObjectsUnknown: true, defaultNonNullable: false });
+  files['openapi.d.ts'] = header + astToString(ast);
+  const destination = new URL(folder, root);
+  if (!check) await mkdir(destination, { recursive: true });
+  for (const [name, expected] of Object.entries(files)) {
+    const path = new URL(name, destination);
+    let actual;
+    try {
+      actual = await readFile(path, 'utf8');
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+    if (actual === expected) continue;
+    if (check) stale.push(folder + name);
+    else await writeFile(path, expected);
+  }
 }
 if (stale.length) throw new Error(`Generated files differ: ${stale.join(', ')}. Run npm run generate.`);

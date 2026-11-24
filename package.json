@@ -1,6 +1,6 @@
 {
   "name": "ml-intern-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "HuggingChat's ML Intern Hub tools for your own sandbox, over stdio or Streamable HTTP",
   "type": "module",
@@ -16,14 +16,17 @@
     "openapi.yaml",
     "scripts/check-sandbox.mjs",
     "skills/ml-intern",
-    "notices"
+    "notices",
+    "byos.openapi.yaml",
+    "providers",
+    "examples"
   ],
   "engines": {
     "node": ">=22.14.0"
   },
   "scripts": {
     "start": "node server.mjs",
-    "start:http": "node server.mjs --http",
+    "start:http": "node server.mjs --http --byos",
     "check:sandbox": "node scripts/check-sandbox.mjs",
     "capture": "node scripts/capture-contract.mjs",
     "check:drift": "node scripts/capture-contract.mjs --check && node scripts/generate.mjs --check && node scripts/check-drift.mjs",
@@ -31,13 +34,15 @@
     "test": "node scripts/generate.mjs --check && tsc --noEmit --strict --module nodenext --target es2022 test/types.mts && node --test test/*.test.mjs"
   },
   "dependencies": {
+    "@exedev/sdk": "0.7.0",
+    "@llmindset/hf-mcp": "0.4.39",
     "@llmindset/hf-mcp-server": "0.4.39",
     "@modelcontextprotocol/client": "2.4.0",
     "@modelcontextprotocol/node": "2.1.2",
-    "@modelcontextprotocol/server": "2.4.0"
+    "@modelcontextprotocol/server": "2.4.0",
+    "modal": "0.11.2"
   },
   "devDependencies": {
-    "@llmindset/hf-mcp": "0.4.39",
     "@modelcontextprotocol/core": "2.4.0",
     "@types/node": "22.20.5",
     "openapi-typescript": "7.13.0",

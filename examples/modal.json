@@ -1,0 +1,73 @@
+{
+  "credentialEnvironment": [
+    "MODAL_TOKEN_ID",
+    "MODAL_TOKEN_SECRET"
+  ],
+  "calls": [
+    {
+      "name": "sandbox_status",
+      "arguments": {
+        "provider": "modal",
+        "sandboxId": "sb-example"
+      }
+    },
+    {
+      "name": "sandbox_exec",
+      "arguments": {
+        "provider": "modal",
+        "sandboxId": "sb-example",
+        "command": "printf ml-intern-ok",
+        "timeoutSeconds": 10
+      }
+    }
+  ],
+  "illustrativeResults": [
+    {
+      "provider": "modal",
+      "sandboxId": "sb-example",
+      "state": "running"
+    },
+    {
+      "provider": "modal",
+      "sandboxId": "sb-example",
+      "stdout": "ml-intern-ok",
+      "stderr": "",
+      "exitCode": 0,
+      "timedOut": false
+    }
+  ],
+  "fileCalls": [
+    {
+      "name": "sandbox_write_file",
+      "arguments": {
+        "provider": "modal",
+        "sandboxId": "sb-example",
+        "path": "/tmp/ml-intern-example.txt",
+        "text": "hello\n"
+      }
+    },
+    {
+      "name": "sandbox_read_file",
+      "arguments": {
+        "provider": "modal",
+        "sandboxId": "sb-example",
+        "path": "/tmp/ml-intern-example.txt",
+        "maxBytes": 256
+      }
+    }
+  ],
+  "illustrativeFileResults": [
+    {
+      "provider": "modal",
+      "sandboxId": "sb-example",
+      "bytes": 6
+    },
+    {
+      "provider": "modal",
+      "sandboxId": "sb-example",
+      "text": "hello\n",
+      "bytes": 6,
+      "truncated": false
+    }
+  ]
+}

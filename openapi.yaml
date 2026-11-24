@@ -33,6 +33,9 @@ x-mcp-local-http:
     in: header
     name: X-HF-Token
     required: false
+  byos:
+    flag: --byos
+    contract: ./byos.openapi.yaml
   description: The standalone listener serves the intern preset per request. The proxy handles gateway
     Authorization. A public-files listener exposes only anonymous hf_fs.
 x-mcp-tools:

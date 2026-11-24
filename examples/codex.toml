@@ -1,0 +1,10 @@
+# Start the endpoint with npm run start:http.
+# Copy this table into ~/.codex/config.toml and keep the mappings for the providers you use.
+[mcp_servers.ml_intern_byos]
+url = "http://127.0.0.1:8787/mcp"
+
+[mcp_servers.ml_intern_byos.env_http_headers]
+"X-HF-Token" = "HF_TOKEN"
+"X-Exe-Token" = "EXE_TOKEN"
+"X-Modal-Token-Id" = "MODAL_TOKEN_ID"
+"X-Modal-Token-Secret" = "MODAL_TOKEN_SECRET"

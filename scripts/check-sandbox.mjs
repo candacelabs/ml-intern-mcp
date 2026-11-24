@@ -1,8 +1,6 @@
-import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
-import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { createMlInternClient } from '../generated/tools.mjs';
+import { openSandboxClient } from '../lib/sandbox-client.mjs';
 
 async function main() {
   const { values, positionals } = parseArgs({ allowPositionals: true, options: {
@@ -12,30 +10,9 @@ async function main() {
   if (values.help) return console.log(usage);
   if (positionals.length !== 1 || !positionals[0].trim()) throw new Error(usage);
   const [handle] = positionals;
-  const token = process.env.HF_TOKEN?.trim() || process.env.DEFAULT_HF_TOKEN?.trim();
-  const headers = {};
-  let transport;
-  if (values.url) {
-    const url = new URL(values.url);
-    const local = url.protocol === 'http:' && ['127.0.0.1', '[::1]', 'localhost'].includes(url.hostname);
-    if ((!local && url.protocol !== 'https:') || url.username || url.password) throw new Error('Use HTTPS or loopback HTTP for the MCP URL.');
-    if (token) headers['X-HF-Token'] = token;
-    if (process.env.ML_INTERN_PROXY_TOKEN) headers.Authorization = 'Bearer ' + process.env.ML_INTERN_PROXY_TOKEN;
-    transport = new StreamableHTTPClientTransport(url, {
-      requestInit: { headers }, fetch: (input, init) => fetch(input, { ...init, redirect: 'error' }),
-    });
-  } else {
-    if (!token) throw new Error('The standalone sandbox check needs HF_TOKEN from the sandbox owner.');
-    transport = new StdioClientTransport({
-      command: process.execPath, args: [fileURLToPath(new URL('../server.mjs', import.meta.url))],
-      env: { HF_TOKEN: token },
-    });
-  }
-
-  const client = new Client({ name: 'ml-intern-sandbox-check', version: '1' });
   const options = { signal: AbortSignal.timeout(60_000) };
+  const client = await openSandboxClient({ provider: 'hf', url: values.url, ...options });
   try {
-    await client.connect(transport, options);
     const catalog = await client.listTools(undefined, options);
     const names = new Set(catalog.tools.map(tool => tool.name));
     const missing = ['hf_sandbox', 'hf_sandbox_exec', 'hf_sandbox_fs'].filter(name => !names.has(name));

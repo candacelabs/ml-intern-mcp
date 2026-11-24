@@ -220,6 +220,7 @@ const document = {
     transport: 'Streamable HTTP', path: '/mcp', defaultOrigin: 'http://127.0.0.1:8787',
     health: { method: 'GET', path: '/healthz' },
     hubCredential: { in: 'header', name: 'X-HF-Token', required: false },
+    byos: { flag: '--byos', contract: './byos.openapi.yaml' },
     description: 'The standalone listener serves the intern preset per request. The proxy handles gateway Authorization. A public-files listener exposes only anonymous hf_fs.',
   },
   'x-mcp-tools': manifest,

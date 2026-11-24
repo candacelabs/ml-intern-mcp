@@ -1,0 +1,72 @@
+{
+  "credentialEnvironment": [
+    "HF_TOKEN"
+  ],
+  "calls": [
+    {
+      "name": "sandbox_status",
+      "arguments": {
+        "provider": "hf",
+        "sandboxId": "team/example-job-id"
+      }
+    },
+    {
+      "name": "sandbox_exec",
+      "arguments": {
+        "provider": "hf",
+        "sandboxId": "team/example-job-id",
+        "command": "printf ml-intern-ok",
+        "timeoutSeconds": 10
+      }
+    }
+  ],
+  "illustrativeResults": [
+    {
+      "provider": "hf",
+      "sandboxId": "team/example-job-id",
+      "state": "running"
+    },
+    {
+      "provider": "hf",
+      "sandboxId": "team/example-job-id",
+      "stdout": "ml-intern-ok",
+      "stderr": "",
+      "exitCode": 0,
+      "timedOut": false
+    }
+  ],
+  "fileCalls": [
+    {
+      "name": "sandbox_write_file",
+      "arguments": {
+        "provider": "hf",
+        "sandboxId": "team/example-job-id",
+        "path": "/tmp/ml-intern-example.txt",
+        "text": "hello\n"
+      }
+    },
+    {
+      "name": "sandbox_read_file",
+      "arguments": {
+        "provider": "hf",
+        "sandboxId": "team/example-job-id",
+        "path": "/tmp/ml-intern-example.txt",
+        "maxBytes": 256
+      }
+    }
+  ],
+  "illustrativeFileResults": [
+    {
+      "provider": "hf",
+      "sandboxId": "team/example-job-id",
+      "bytes": 6
+    },
+    {
+      "provider": "hf",
+      "sandboxId": "team/example-job-id",
+      "text": "hello\n",
+      "bytes": 6,
+      "truncated": false
+    }
+  ]
+}

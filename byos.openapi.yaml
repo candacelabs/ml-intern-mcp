@@ -1,0 +1,118 @@
+openapi: 3.1.0
+info:
+  title: Bring Your Own Sandbox tools
+  version: 1.0.0
+  description: Optional tools on the ML Intern MCP endpoint. Each call targets one existing, caller-owned sandbox.
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+paths: {}
+x-byos-credential-headers:
+  hf: { HF_TOKEN: X-HF-Token }
+  exe.dev: { EXE_TOKEN: X-Exe-Token }
+  modal: { MODAL_TOKEN_ID: X-Modal-Token-Id, MODAL_TOKEN_SECRET: X-Modal-Token-Secret }
+x-mcp-tools:
+  sandbox_status:
+    anonymous: true
+    description: Check the state of an existing sandbox using the caller's provider credential.
+    annotations: { readOnlyHint: true, openWorldHint: true }
+    inputSchema: { $ref: '#/components/schemas/Target' }
+    outputSchema: { $ref: '#/components/schemas/StatusResult' }
+  sandbox_exec:
+    anonymous: true
+    description: Run one POSIX shell command inside an existing sandbox. Nonzero exit codes are returned as data.
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true }
+    inputSchema: { $ref: '#/components/schemas/ExecInput' }
+    outputSchema: { $ref: '#/components/schemas/ExecResult' }
+  sandbox_read_file:
+    anonymous: true
+    description: Read a bounded prefix of a UTF-8 file at an absolute path in an existing sandbox.
+    annotations: { readOnlyHint: true, openWorldHint: true }
+    inputSchema: { $ref: '#/components/schemas/ReadInput' }
+    outputSchema: { $ref: '#/components/schemas/ReadResult' }
+  sandbox_write_file:
+    anonymous: true
+    description: Write or replace a UTF-8 file at an absolute path in an existing sandbox. Maximum 100000 UTF-8 bytes.
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true }
+    inputSchema: { $ref: '#/components/schemas/WriteInput' }
+    outputSchema: { $ref: '#/components/schemas/WriteResult' }
+components:
+  schemas:
+    Provider: { type: string, enum: [hf, exe.dev, modal] }
+    SandboxId:
+      type: string
+      minLength: 1
+      maxLength: 256
+      description: Hugging Face namespace/job ID or canonical handle, exe.dev VM name, or Modal sandbox ID.
+    Path: { type: string, pattern: '^/', maxLength: 4096, description: Absolute POSIX path inside the sandbox. }
+    Target:
+      type: object
+      additionalProperties: false
+      required: [provider, sandboxId]
+      properties:
+        provider: &provider { $ref: '#/components/schemas/Provider' }
+        sandboxId: &sandboxId { $ref: '#/components/schemas/SandboxId' }
+    StatusResult:
+      type: object
+      additionalProperties: false
+      required: [provider, sandboxId, state]
+      properties:
+        provider: *provider
+        sandboxId: *sandboxId
+        state: { type: string, enum: [running, stopped, unknown] }
+    ExecInput:
+      type: object
+      additionalProperties: false
+      required: [provider, sandboxId, command]
+      properties:
+        provider: *provider
+        sandboxId: *sandboxId
+        command: { type: string, minLength: 1, maxLength: 16384 }
+        cwd: &path { $ref: '#/components/schemas/Path' }
+        stdin: { type: string, maxLength: 100000 }
+        timeoutSeconds: { type: integer, minimum: 1, maximum: 55, default: 30 }
+    ExecResult:
+      type: object
+      additionalProperties: false
+      required: [provider, sandboxId, stdout, stderr, exitCode, timedOut]
+      properties:
+        provider: *provider
+        sandboxId: *sandboxId
+        stdout: { type: string, description: UTF-8 standard output, limited to 1 MiB. }
+        stderr: { type: string, description: UTF-8 standard error, limited to 1 MiB. }
+        exitCode: { type: [integer, 'null'] }
+        timedOut: { type: boolean }
+    ReadInput:
+      type: object
+      additionalProperties: false
+      required: [provider, sandboxId, path]
+      properties:
+        provider: *provider
+        sandboxId: *sandboxId
+        path: *path
+        maxBytes: { type: integer, minimum: 1, maximum: 100000, default: 20000 }
+    ReadResult:
+      type: object
+      additionalProperties: false
+      required: [provider, sandboxId, text, bytes, truncated]
+      properties:
+        provider: *provider
+        sandboxId: *sandboxId
+        text: { type: string }
+        bytes: &bytes { type: integer, minimum: 0, maximum: 100000, description: Number of UTF-8 bytes of text. }
+        truncated: { type: boolean }
+    WriteInput:
+      type: object
+      additionalProperties: false
+      required: [provider, sandboxId, path, text]
+      properties:
+        provider: *provider
+        sandboxId: *sandboxId
+        path: *path
+        text: { type: string, maxLength: 100000 }
+    WriteResult:
+      type: object
+      additionalProperties: false
+      required: [provider, sandboxId, bytes]
+      properties:
+        provider: *provider
+        sandboxId: *sandboxId
+        bytes: *bytes

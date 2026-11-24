@@ -1,0 +1,72 @@
+{
+  "credentialEnvironment": [
+    "EXE_TOKEN"
+  ],
+  "calls": [
+    {
+      "name": "sandbox_status",
+      "arguments": {
+        "provider": "exe.dev",
+        "sandboxId": "my-research-vm"
+      }
+    },
+    {
+      "name": "sandbox_exec",
+      "arguments": {
+        "provider": "exe.dev",
+        "sandboxId": "my-research-vm",
+        "command": "printf ml-intern-ok",
+        "timeoutSeconds": 10
+      }
+    }
+  ],
+  "illustrativeResults": [
+    {
+      "provider": "exe.dev",
+      "sandboxId": "my-research-vm",
+      "state": "running"
+    },
+    {
+      "provider": "exe.dev",
+      "sandboxId": "my-research-vm",
+      "stdout": "ml-intern-ok",
+      "stderr": "",
+      "exitCode": 0,
+      "timedOut": false
+    }
+  ],
+  "fileCalls": [
+    {
+      "name": "sandbox_write_file",
+      "arguments": {
+        "provider": "exe.dev",
+        "sandboxId": "my-research-vm",
+        "path": "/tmp/ml-intern-example.txt",
+        "text": "hello\n"
+      }
+    },
+    {
+      "name": "sandbox_read_file",
+      "arguments": {
+        "provider": "exe.dev",
+        "sandboxId": "my-research-vm",
+        "path": "/tmp/ml-intern-example.txt",
+        "maxBytes": 256
+      }
+    }
+  ],
+  "illustrativeFileResults": [
+    {
+      "provider": "exe.dev",
+      "sandboxId": "my-research-vm",
+      "bytes": 6
+    },
+    {
+      "provider": "exe.dev",
+      "sandboxId": "my-research-vm",
+      "text": "hello\n",
+      "bytes": 6,
+      "truncated": false
+    }
+  ]
+}

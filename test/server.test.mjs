@@ -6,21 +6,23 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { createByosClient, listByosTools } from '../generated/byos/tools.mjs';
 import { callMlInternJob, createMlInternClient, listMlInternTools } from '../generated/tools.mjs';
 
-async function connect(t, authenticated, args = []) {
+async function connect(t, authenticated, args = [], env = {}) {
   const home = await mkdtemp(join(tmpdir(), 'ml-intern-test-'));
   t.after(() => rm(home, { recursive: true, force: true }));
   // A credential lookup through the CLI would fail startup in this environment.
   await writeFile(join(home, 'hf'), '#!/bin/sh\nexit 17\n', { mode: 0o700 });
   const server = fileURLToPath(new URL('../server.mjs', import.meta.url));
-  const fixture = new URL('./fixtures/hub.mjs', import.meta.url).href;
+  const fixture = new URL(args.includes('--byos') ? './fixtures/byos.mjs' : './fixtures/hub.mjs', import.meta.url).href;
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: ['--import', fixture, server, ...args],
     env: {
       HOME: home, PATH: home, HF_HOME: home, LOG_LEVEL: 'silent',
       ...(authenticated && { HF_TOKEN: 'test-credential', DEFAULT_HF_TOKEN: 'test-credential' }),
+      ...env,
     },
   });
   const client = new Client({ name: 'contract-test', version: '1' });
@@ -37,6 +39,17 @@ test('anonymous stdio discovery and calls agree with the generated contract', as
   const who = await tools.hf_whoami({});
   assert.equal(who.structuredContent.status, 'anonymous');
   await assert.rejects(tools.hf_jobs({ operation: 'ps' }));
+});
+
+test('stdio can run a portable sandbox command with just the selected provider’s credential', async t => {
+  const { client, tools } = await connect(t, false, ['--byos'], { EXE_TOKEN: 'fixture-exe' });
+  const names = (await client.listTools()).tools.map(tool => tool.name).sort();
+  assert.deepEqual(names, [...listMlInternTools(false), ...listByosTools()].map(tool => tool.name).sort());
+  assert.equal((await tools.hf_whoami({})).structuredContent.status, 'anonymous');
+  const byos = createByosClient(client);
+  const target = { provider: 'exe.dev', sandboxId: 'fixture-vm' };
+  const result = await byos.sandbox_exec({ ...target, command: 'printf ml-intern-ok', timeoutSeconds: 10 });
+  assert.deepEqual(result.structuredContent, { ...target, stdout: 'ml-intern-ok', stderr: '', exitCode: 0, timedOut: false });
 });
 
 test('Codex public-files mode exposes a public read and leaves identity and Jobs to the app', async (t) => {
