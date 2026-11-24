@@ -1,90 +1,59 @@
 # ML Intern MCP
 
-Use HuggingChat’s ML Intern tools from Codex to read papers, inspect model checkpoints and datasets, and run Hugging Face Jobs. Codex handles the conversation. This server supplies the tools.
+Use HuggingChat’s ML Intern tools from GitHub Copilot or Codex to read papers, inspect model checkpoints and datasets, and run Hugging Face Jobs.
 
 **Bring your own sandbox (BYOS).** Run commands and work with files on an existing Hugging Face sandbox, exe.dev VM, or Modal Sandbox. You control its lifetime and cost. Disconnecting leaves it running.
 
-## Get started
+## Install
 
-You’ll need Node.js 22.14 or newer.
+Run the command for your client in a macOS or Linux terminal. It downloads the server and a private runtime, then registers it with the client. You’ll need the client’s shell command on your path (`copilot`, `code`, or `codex`).
+
+**GitHub Copilot CLI**
 
 ```sh
-git clone https://github.com/candacelabs/ml-intern-mcp.git
-cd ml-intern-mcp
-npm ci --omit=dev
+curl -fsSL https://github.com/candacelabs/ml-intern-mcp/releases/latest/download/install.sh | sh -s -- copilot
 ```
 
-From this checkout, you can [try your sandbox](#work-with-an-existing-sandbox) or [connect Codex](#connect-codex).
+**GitHub Copilot in VS Code**
+
+```sh
+curl -fsSL https://github.com/candacelabs/ml-intern-mcp/releases/latest/download/install.sh | sh -s -- vscode
+```
+
+**Codex**
+
+```sh
+curl -fsSL https://github.com/candacelabs/ml-intern-mcp/releases/latest/download/install.sh | sh -s -- codex
+```
+
+Open a new chat and try **“Use ML Intern to read the config for `google-bert/bert-base-uncased`. How many transformer layers does it have?”** The public checkpoint has 12 layers and needs no provider credential.
 
 ## Work with an existing sandbox
 
-**Public preview.** All three providers have passed fixture tests. Live sandbox execution still needs verification.
+For sandbox access, add the provider name to the install command. For example, to connect Copilot CLI to exe.dev, export `EXE_TOKEN` and run the following command.
 
-Choose your provider and export its credentials in your shell. Each provider example shows the requests and results.
+```sh
+curl -fsSL https://github.com/candacelabs/ml-intern-mcp/releases/latest/download/install.sh | sh -s -- copilot exe.dev
+```
 
-| Provider | Sandbox to use | Credentials |
+Launch the client with the credential in its environment, then ask **“On my exe.dev VM `my-research-vm`, run `pwd`.”** Substitute your VM name. The installer registers environment variable names so the client supplies their values when starting the server.
+
+| Installer argument | Existing sandbox | Credentials |
 | --- | --- | --- |
-| [Hugging Face](examples/hf.json) | A dedicated sandbox Job you own or created, identified by `NAMESPACE/JOB_ID` | Its original `HF_TOKEN` |
-| [exe.dev](examples/exe-dev.json) | A VM name, such as `my-research-vm` | `EXE_TOKEN` with permission to run `ssh <vm-name>` |
-| [Modal](examples/modal.json) | A Sandbox ID beginning with `sb-` | Its workspace’s `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET` |
+| `hf` | Dedicated Hugging Face sandbox Job you own or created, identified by `NAMESPACE/JOB_ID` | Its original `HF_TOKEN` |
+| `exe.dev` | VM name, such as `my-research-vm` | `EXE_TOKEN` with `ssh <vm-name>` permission |
+| `modal` | Modal Sandbox ID beginning with `sb-` | `MODAL_TOKEN_ID`, `MODAL_TOKEN_SECRET` |
 
-Run the line for your provider, replacing the quoted value with your own sandbox ID.
+You can include multiple provider names. To use an existing Hugging Face app connection in Codex for identity and Jobs, pass `codex public-files` to install the companion for public reads. [Provider examples and client settings](examples/README.md)
 
-```sh
-node examples/run.mjs hf "NAMESPACE/JOB_ID"
-node examples/run.mjs exe.dev "my-research-vm"
-node examples/run.mjs modal "sb-YOUR-SANDBOX-ID"
-```
-
-The runner checks that the sandbox is running, then runs `printf ml-intern-ok`. Look for `ml-intern-ok` in stdout and an exit code of `0`. [Finding your ID and trying file operations](examples/README.md)
-
-## Connect Codex
-
-**To use your sandbox**, start the server from the checkout and leave it running.
-
-```sh
-npm run start:http
-```
-
-Copy the server entry from [examples/codex.toml](examples/codex.toml) into `~/.codex/config.toml`. Keep the credential mappings for the providers you use. Start a new Codex session with those variables exported and try a request like this one, substituting your VM name.
-
-> On my exe.dev VM `my-research-vm`, run `pwd` and tell me which directory it returned.
+**Public preview.** All three providers passed fixture tests. Live sandbox execution still needs verification.
 
 <details>
-<summary>Codex configuration for the local server</summary>
+<summary>Installation details and shared HTTP servers</summary>
 
-```toml
-[mcp_servers.ml_intern_byos]
-url = "http://127.0.0.1:8787/mcp"
+The installer supports Apple Silicon and Intel Macs, and x64 and ARM64 Linux with glibc. It also supports x64 Linux with musl. It verifies the downloads and installs under `$XDG_DATA_HOME/ml-intern-mcp`, defaulting to `~/.local/share/ml-intern-mcp`. Re-run the command to upgrade. Use `standalone` for another stdio client. The installer prints the absolute server path to use with the argument `--byos`. [Installer source](scripts/install.sh) · [Release downloads](https://github.com/candacelabs/ml-intern-mcp/releases)
 
-[mcp_servers.ml_intern_byos.env_http_headers]
-"X-HF-Token" = "HF_TOKEN"
-"X-Exe-Token" = "EXE_TOKEN"
-"X-Modal-Token-Id" = "MODAL_TOKEN_ID"
-"X-Modal-Token-Secret" = "MODAL_TOKEN_SECRET"
-```
-
-</details>
-
-**Already using the Hugging Face app in Codex?** Your app connection handles account identity and Jobs. Add this server for public file and paper reads. Codex starts it when needed.
-
-```sh
-codex mcp add ml_intern -- "$(command -v node)" "$PWD/server.mjs" --public-files
-```
-
-In a new Codex session, try **“Read the config for `google-bert/bert-base-uncased`. How many transformer layers does it have?”** The checkpoint has 12.
-
-<details>
-<summary>Install the optional ML Intern skill for Codex</summary>
-
-From the checkout, link the skill so Codex can use its instructions for choosing Hub tools and reproducing papers.
-
-```sh
-mkdir -p "$HOME/.agents/skills"
-test -e "$HOME/.agents/skills/ml-intern" || ln -s "$PWD/skills/ml-intern" "$HOME/.agents/skills/ml-intern"
-```
-
-In a new session, try **“Use $ml-intern to check my Hugging Face account and read the BERT checkpoint config.”**
+If your team already hosts the server, connect directly to its HTTPS endpoint. [Shared endpoint examples for Copilot and Codex](examples/README.md#connect-to-a-shared-server)
 
 </details>
 
@@ -175,7 +144,15 @@ node server.mjs --http --byos --host 127.0.0.1 --port 8787 \
 
 The server runs Hugging Face’s pinned `intern` handlers. Both transports use the same generated tool definitions. Pass a connected MCP SDK client to `createMlInternClient` for Hub tools or `createByosClient` for sandbox tools. [Hub contract](openapi.yaml) · [Sandbox contract](byos.openapi.yaml) · [Generated clients](generated/)
 
-Install development dependencies with `npm ci`.
+For development or to run the scripts in `examples/`, clone the repository and install Node.js 22.14 or newer.
+
+```sh
+git clone https://github.com/candacelabs/ml-intern-mcp.git
+cd ml-intern-mcp
+npm ci
+```
+
+Run `scripts/build-release.sh OUTPUT_DIRECTORY` on a Linux build host to produce the portable server archive, installer, and checksums.
 
 | Command | Checks |
 | --- | --- |

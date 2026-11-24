@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "ml-intern": {
+      "type": "http",
+      "url": "https://mcp.example.com/mcp",
+      "headers": {
+        "X-Exe-Token": "${EXE_TOKEN}"
+      },
+      "tools": [
+        "*"
+      ]
+    }
+  }
+}

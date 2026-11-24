@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "ml-intern": {
+      "type": "http",
+      "url": "https://mcp.example.com/mcp",
+      "headers": {
+        "X-Exe-Token": "${env:EXE_TOKEN}"
+      }
+    }
+  }
+}

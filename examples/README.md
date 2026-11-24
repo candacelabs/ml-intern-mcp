@@ -10,7 +10,7 @@ Each JSON file contains complete MCP tool-call arguments for one provider and th
 
 For Hugging Face, combine the Job namespace with the existing Python `Sandbox.id`, for example `example-team/0123456789abcdef01234567`. For exe.dev, use the VM name. For Modal, copy the existing JavaScript `Sandbox.sandboxId` or Python `Sandbox.object_id`. [Hugging Face sandbox lifecycle](https://huggingface.co/docs/huggingface_hub/guides/sandbox#lifecycle) · [Referencing a Modal Sandbox](https://modal.com/docs/guide/sandboxes#referencing-sandboxes-from-other-code)
 
-From the repository root, choose one command. Supply credentials through the environment or your secret manager.
+These scripts are for a development checkout. To install the server into your client, use the [shell installer](../README.md#install). From the repository root, choose one command. Supply credentials through the environment or your secret manager.
 
 ```sh
 node examples/run.mjs hf "$HF_SANDBOX_ID"
@@ -25,7 +25,29 @@ By default the runner starts an MCP subprocess and issues `sandbox_status` and `
 {"provider":"exe.dev","sandboxId":"my-research-vm","stdout":"ml-intern-ok","stderr":"","exitCode":0,"timedOut":false}
 ```
 
-To use a shared server, start `npm run start:http` and append `--url http://127.0.0.1:8787/mcp` to the example command. For a remote deployment use its HTTPS URL. The runner forwards only the chosen provider’s credentials and an optional `ML_INTERN_PROXY_TOKEN` for your gateway. To use the same endpoint from Codex, add the relevant entries to `~/.codex/config.toml`. [Codex configuration](codex.toml)
+## Optional Codex skill
+
+The shell installer includes the ML Intern skill for choosing Hub tools and reproducing papers. To enable it after installing the server, link it into the Codex skills directory.
+
+```sh
+mkdir -p "$HOME/.agents/skills"
+test -e "$HOME/.agents/skills/ml-intern" || ln -s "${XDG_DATA_HOME:-$HOME/.local/share}/ml-intern-mcp/current/app/skills/ml-intern" "$HOME/.agents/skills/ml-intern"
+```
+
+## Connect to a shared server
+
+A team running its own HTTPS endpoint can register its URL directly. Replace the example domain with your server’s address. For a local source checkout, `npm run start:http` listens at `http://127.0.0.1:8787/mcp`.
+
+```sh
+copilot mcp add --transport http ml-intern https://mcp.example.com/mcp
+codex mcp add ml_intern_byos --url https://mcp.example.com/mcp
+```
+
+For sandbox calls, add the headers for your chosen provider. The example profiles forward environment variables for an existing exe.dev VM in Copilot CLI and VS Code. The Codex example lists mappings for all three providers. [Copilot CLI configuration](copilot-http.json) · [VS Code configuration](vscode-http.json) · [Codex configuration](codex.toml)
+
+For Copilot CLI, merge the `mcpServers` entry into `~/.copilot/mcp-config.json`. For VS Code, merge the `servers` entry into `.vscode/mcp.json` or your user MCP configuration. Use `~/.codex/config.toml` for Codex. [GitHub Copilot CLI documentation](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers) · [VS Code MCP configuration](https://code.visualstudio.com/docs/agents/reference/mcp-configuration)
+
+To run a provider example through the endpoint, append `--url URL`. The runner forwards the chosen provider’s credentials and an optional `ML_INTERN_PROXY_TOKEN` for your gateway.
 
 ## File examples
 
