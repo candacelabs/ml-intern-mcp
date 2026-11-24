@@ -69,3 +69,16 @@ test('authenticated generated stubs submit and find a job through the Hub handle
   assert.equal(invalid.isError, true);
   assert.equal(invalid.structuredContent.outcome.code, 'validation');
 });
+
+test('stdio uses an existing BYOS handle for status, shell commands, and filesystem access', async t => {
+  const { tools } = await connect(t, true);
+  const handle = 'hfsb2:intern-fixture:existing-sandbox';
+  const status = await tools.hf_sandbox({ cmd: 'status', args: [handle] });
+  assert.equal(status.structuredContent.health.ok, true);
+  assert.equal(status.structuredContent.handle, handle);
+  const exec = await tools.hf_sandbox_exec({ cmd: 'exec', args: [handle, 'printf ml-intern-ok'] });
+  assert.equal(exec.structuredContent.returncode, 0);
+  assert.equal(exec.structuredContent.stdout, 'ml-intern-ok');
+  const root = await tools.hf_sandbox_fs({ cmd: 'stat', args: [handle, '/'] });
+  assert.equal(root.structuredContent.type, 'dir');
+});

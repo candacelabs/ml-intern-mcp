@@ -1,14 +1,30 @@
 {
   "name": "ml-intern-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "HuggingChat's ML Intern Hub tool preset over local MCP stdio for Codex",
+  "description": "HuggingChat's ML Intern Hub tools for your own sandbox, over stdio or Streamable HTTP",
   "type": "module",
+  "bin": {
+    "ml-intern-mcp": "./server.mjs"
+  },
+  "main": "./generated/tools.mjs",
+  "types": "./generated/tools.d.mts",
+  "files": [
+    "server.mjs",
+    "lib",
+    "generated",
+    "openapi.yaml",
+    "scripts/check-sandbox.mjs",
+    "skills/ml-intern",
+    "notices"
+  ],
   "engines": {
     "node": ">=22.14.0"
   },
   "scripts": {
     "start": "node server.mjs",
+    "start:http": "node server.mjs --http",
+    "check:sandbox": "node scripts/check-sandbox.mjs",
     "capture": "node scripts/capture-contract.mjs",
     "check:drift": "node scripts/capture-contract.mjs --check && node scripts/generate.mjs --check && node scripts/check-drift.mjs",
     "generate": "node scripts/generate.mjs",
@@ -17,6 +33,7 @@
   "dependencies": {
     "@llmindset/hf-mcp-server": "0.4.39",
     "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/node": "2.1.2",
     "@modelcontextprotocol/server": "2.4.0"
   },
   "devDependencies": {

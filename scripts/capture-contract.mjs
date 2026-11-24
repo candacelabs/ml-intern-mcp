@@ -216,6 +216,12 @@ const document = {
     framing: 'One UTF-8 JSON-RPC message per line on stdin and stdout.',
     description: 'Local stdio uses the same initialize, tools/list and tools/call messages and tool schemas. Credentials come from the server process. Query parameters, HTTP headers, status codes and the hosted HTTP skills resource extension are transport-specific.',
   },
+  'x-mcp-local-http': {
+    transport: 'Streamable HTTP', path: '/mcp', defaultOrigin: 'http://127.0.0.1:8787',
+    health: { method: 'GET', path: '/healthz' },
+    hubCredential: { in: 'header', name: 'X-HF-Token', required: false },
+    description: 'The standalone listener serves the intern preset per request. The proxy handles gateway Authorization. A public-files listener exposes only anonymous hf_fs.',
+  },
   'x-mcp-tools': manifest,
   'x-mcp-result-by-tool': resultByTool,
   paths: { '/mcp': { post: {

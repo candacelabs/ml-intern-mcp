@@ -1,64 +1,58 @@
+#!/usr/bin/env node
 import { parseArgs } from 'node:util';
-import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
-import { McpServer, fromJsonSchema } from '@modelcontextprotocol/server';
-import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
-import { listMlInternTools } from './generated/tools.mjs';
+import pkg from './package.json' with { type: 'json' };
 
-// The upstream logger chooses its output at import time. stdout belongs to MCP.
-process.env.TRANSPORT = 'STDIO';
-process.env.LOG_LEVEL ??= 'warn';
-delete process.env.LOGGING_DATASET_ID;
+const help = `ml-intern-mcp [--public-files] [--http [--host HOST] [--port PORT] [--public-origin URL]]
 
-// Keep the upstream file handler (batched results, attachments, cancellation)
-// while giving Codex a public-only catalog and accurate discovery instructions.
-async function publicFilesServer(upstream) {
-  const client = new Client({ name: 'public-files', version: '1' });
-  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-  await upstream.connect(serverTransport);
-  await client.connect(clientTransport);
-  const server = new McpServer({ name: 'ml-intern-public-files', version: '1' }, {
-    instructions: 'Read public Hugging Face Hub files. Use the connected Hugging Face app for account identity, Jobs, and authorized Hub operations.',
-  });
-  const { tools } = await client.listTools();
-  const file = tools.find(tool => tool.name === 'hf_fs');
-  if (file) {
-    const { name, inputSchema, outputSchema, ...metadata } = file;
-    server.registerTool(name, {
-      ...metadata, inputSchema: fromJsonSchema(inputSchema), outputSchema: fromJsonSchema(outputSchema),
-    }, (args, ctx) => client.callTool({ name, arguments: args }, {
-      toolDefinition: file, signal: ctx.mcpReq.signal,
-    }));
-  }
-  server.server.onclose = () => { void client.close(); };
-  return server;
-}
+  Default           Serve the ML Intern tools over stdio.
+  --public-files    Expose only public Hub file reads for use alongside the Codex HF app.
+  --http            Serve Streamable HTTP at /mcp (default 127.0.0.1:8787).
+  --host            Address to listen on. Use --public-origin for non-loopback binds.
+  --port            TCP port (0 selects an available port).
+  --public-origin   External HTTPS origin of your reverse proxy.
+  --version, -v     Print the package version.
+  --help, -h        Show this help.
+
+Stdio uses the hosting process's HF_TOKEN when supplied. HTTP uses each caller's
+X-HF-Token header for Hub operations. Public file mode always uses anonymous access.`;
 
 async function main() {
-  const { values } = parseArgs({ options: { 'public-files': { type: 'boolean', default: false } } });
-  const publicFiles = values['public-files'];
-  if (publicFiles) {
-    delete process.env.HF_TOKEN;
-    delete process.env.DEFAULT_HF_TOKEN;
+  const { values } = parseArgs({ options: {
+    http: { type: 'boolean' }, 'public-files': { type: 'boolean' },
+    host: { type: 'string' }, port: { type: 'string' }, 'public-origin': { type: 'string' },
+    help: { type: 'boolean', short: 'h' }, version: { type: 'boolean', short: 'v' },
+  } });
+  if (values.help || values.version) {
+    console.log(values.help ? help : pkg.version);
+    return;
   }
-  const token = process.env.HF_TOKEN?.trim() || process.env.DEFAULT_HF_TOKEN?.trim();
-  if (token) process.env.DEFAULT_HF_TOKEN = token;
+  if (!values.http && [values.host, values.port, values['public-origin']].some(v => v !== undefined)) {
+    throw new Error('--host, --port and --public-origin require --http');
+  }
 
-  const { createServerFactory } = await import('@llmindset/hf-mcp-server/dist/server/mcp-server.js');
-  const { McpApiClient } = await import('@llmindset/hf-mcp-server/dist/server/utils/mcp-api-client.js');
+  const publicFiles = values['public-files'] ?? false;
+  const token = !values.http && !publicFiles
+    ? process.env.HF_TOKEN?.trim() || process.env.DEFAULT_HF_TOKEN?.trim() : undefined;
+  // Set stdout-safe upstream logging before importing any Hub modules.
+  process.env.TRANSPORT = 'STDIO';
+  process.env.LOG_LEVEL ??= 'warn';
+  delete process.env.LOGGING_DATASET_ID;
+  delete process.env.HF_TOKEN;
+  delete process.env.DEFAULT_HF_TOKEN;
 
-  // The Hub factory always supplies whoami, and enables its write handler via
-  // the "hf_files" feature flag. The other selection IDs are the MCP wire names.
-  const builtInTools = publicFiles ? ['hf_fs'] : listMlInternTools(Boolean(token))
-    .map((tool) => tool.name)
-    .filter((name) => name !== 'hf_whoami')
-    .map((name) => name === 'hf_fs_write' ? 'hf_files' : name);
-  const makeServer = createServerFactory(new McpApiClient({ type: 'static' }));
-  const { server: upstream } = await makeServer(null, { builtInTools, spaceTools: [] }, true);
-  const server = publicFiles ? await publicFilesServer(upstream) : upstream;
-  await server.connect(new StdioServerTransport());
+  if (values.http) {
+    const { startHttp } = await import('./lib/http.mjs');
+    await startHttp({ host: values.host, port: values.port, publicOrigin: values['public-origin'], publicFiles });
+  } else {
+    const { createHubServer, fetchHfWhoami } = await import('./lib/hub.mjs');
+    const { StdioServerTransport } = await import('@modelcontextprotocol/server/stdio');
+    const user = token ? await fetchHfWhoami(token) : undefined;
+    const server = await createHubServer({ publicFiles, token, user });
+    await server.connect(new StdioServerTransport());
+  }
 }
 
-main().catch((error) => {
+main().catch(error => {
   console.error('ml-intern-mcp:', error.message);
   process.exitCode = 1;
 });
