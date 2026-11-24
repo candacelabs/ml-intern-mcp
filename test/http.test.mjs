@@ -93,7 +93,7 @@ test('the runnable HTTP examples use each caller’s credentials for all four sa
     assert.equal(denied.isError, true);
     assert.match(denied.content[0].text, /Missing .* credential/);
     const { stdout } = await promisify(execFile)(process.execPath, [
-      example, provider, sandboxId, '--url', url.href, '--write-path', '/tmp/ml-intern-example.txt',
+      ...(provider === 'hf' ? [example] : [server, 'example']), provider, sandboxId, '--url', url.href, '--write-path', '/tmp/ml-intern-example.txt',
     ], {
       env: { HF_TOKEN: 'wrong-provider-token', ...env }, timeout: 15_000,
     });

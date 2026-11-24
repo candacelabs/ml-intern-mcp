@@ -5,6 +5,7 @@ import { allProviderHeaders } from './lib/provider-credentials.mjs';
 
 const help = `ml-intern-mcp [--byos | --public-files] [--http [--host HOST] [--port PORT] [--public-origin URL]]
 
+  example           Check an existing sandbox. Run example --help for arguments.
   Default           Serve the ML Intern tools over stdio.
   --public-files    Expose only public Hub file reads for use alongside the Codex HF app.
   --byos            Add tools for existing Hugging Face, exe.dev and Modal sandboxes.
@@ -20,6 +21,10 @@ X-HF-Token, X-Exe-Token, or X-Modal-Token-Id and X-Modal-Token-Secret headers.
 Public file mode uses anonymous access.`;
 
 async function main() {
+  if (process.argv[2] === 'example') {
+    const { runExample } = await import('./examples/run.mjs');
+    return runExample(process.argv.slice(3));
+  }
   const { values } = parseArgs({ options: {
     http: { type: 'boolean' }, byos: { type: 'boolean' }, 'public-files': { type: 'boolean' },
     host: { type: 'string' }, port: { type: 'string' }, 'public-origin': { type: 'string' },

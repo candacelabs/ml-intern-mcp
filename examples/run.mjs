@@ -1,13 +1,14 @@
 import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { createByosClient } from '../generated/byos/tools.mjs';
 import { openSandboxClient } from '../lib/sandbox-client.mjs';
 
-async function main() {
-  const { values, positionals } = parseArgs({ allowPositionals: true, options: {
+export async function runExample(args) {
+  const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {
     url: { type: 'string' }, 'read-path': { type: 'string' }, 'write-path': { type: 'string' }, help: { type: 'boolean', short: 'h' },
   } });
-  const usage = 'node examples/run.mjs <hf|exe.dev|modal> <existing-sandbox-id> [--url URL] [--read-path /path] [--write-path /scratch-file]';
+  const usage = 'ml-intern-mcp example <hf|exe.dev|modal> <existing-sandbox-id> [--url URL] [--read-path /path] [--write-path /scratch-file]';
   if (values.help) return console.log(usage);
   const [provider, sandboxId] = positionals;
   const files = { hf: 'hf.json', 'exe.dev': 'exe-dev.json', modal: 'modal.json' };
@@ -38,7 +39,9 @@ async function main() {
   }
 }
 
-main().catch(error => {
-  console.error('BYOS example:', error.message);
-  process.exitCode = 1;
-});
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  runExample(process.argv.slice(2)).catch(error => {
+    console.error('BYOS example:', error.message);
+    process.exitCode = 1;
+  });
+}
