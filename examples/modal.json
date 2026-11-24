@@ -8,14 +8,14 @@
       "name": "sandbox_status",
       "arguments": {
         "provider": "modal",
-        "sandboxId": "sb-example"
+        "sandboxId": "sb-1234567890abcdefghijkl"
       }
     },
     {
       "name": "sandbox_exec",
       "arguments": {
         "provider": "modal",
-        "sandboxId": "sb-example",
+        "sandboxId": "sb-1234567890abcdefghijkl",
         "command": "printf ml-intern-ok",
         "timeoutSeconds": 10
       }
@@ -24,12 +24,12 @@
   "illustrativeResults": [
     {
       "provider": "modal",
-      "sandboxId": "sb-example",
+      "sandboxId": "sb-1234567890abcdefghijkl",
       "state": "running"
     },
     {
       "provider": "modal",
-      "sandboxId": "sb-example",
+      "sandboxId": "sb-1234567890abcdefghijkl",
       "stdout": "ml-intern-ok",
       "stderr": "",
       "exitCode": 0,
@@ -41,7 +41,7 @@
       "name": "sandbox_write_file",
       "arguments": {
         "provider": "modal",
-        "sandboxId": "sb-example",
+        "sandboxId": "sb-1234567890abcdefghijkl",
         "path": "/tmp/ml-intern-example.txt",
         "text": "hello\n"
       }
@@ -50,7 +50,7 @@
       "name": "sandbox_read_file",
       "arguments": {
         "provider": "modal",
-        "sandboxId": "sb-example",
+        "sandboxId": "sb-1234567890abcdefghijkl",
         "path": "/tmp/ml-intern-example.txt",
         "maxBytes": 256
       }
@@ -59,12 +59,12 @@
   "illustrativeFileResults": [
     {
       "provider": "modal",
-      "sandboxId": "sb-example",
+      "sandboxId": "sb-1234567890abcdefghijkl",
       "bytes": 6
     },
     {
       "provider": "modal",
-      "sandboxId": "sb-example",
+      "sandboxId": "sb-1234567890abcdefghijkl",
       "text": "hello\n",
       "bytes": 6,
       "truncated": false

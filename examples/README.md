@@ -8,6 +8,8 @@ Each JSON file contains complete MCP tool-call arguments for one provider and th
 | exe.dev | [exe-dev.json](exe-dev.json) | An existing VM name and `EXE_TOKEN` with `ssh <vm-name>` permission. Metadata access with `ls` is optional. The adapter uses the exe.dev HTTPS API. [Provider guide](https://exe.dev/docs/https-api-run-on-vm) |
 | Modal | [modal.json](modal.json) | An existing `sb-…` ID and its workspace’s `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`. The adapter connects through the public Modal JavaScript SDK. [Provider guide](https://modal.com/docs/sdk/js/latest) |
 
+For Hugging Face, combine the Job namespace with the existing Python `Sandbox.id`, for example `example-team/0123456789abcdef01234567`. For exe.dev, use the VM name. For Modal, copy the existing JavaScript `Sandbox.sandboxId` or Python `Sandbox.object_id`. [Hugging Face sandbox lifecycle](https://huggingface.co/docs/huggingface_hub/guides/sandbox#lifecycle) · [Referencing a Modal Sandbox](https://modal.com/docs/guide/sandboxes#referencing-sandboxes-from-other-code)
+
 From the repository root, choose one command. Supply credentials through the environment or your secret manager.
 
 ```sh

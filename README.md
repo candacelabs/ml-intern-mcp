@@ -65,7 +65,7 @@ On success, the response’s `structuredContent` contains the command output and
 {"provider":"exe.dev","sandboxId":"my-research-vm","stdout":"ml-intern-ok","stderr":"","exitCode":0,"timedOut":false}
 ```
 
-An exec call runs one shell command. The timeout defaults to 30 seconds and can be set up to 55. Each output stream is limited to 1 MiB. File reads default to 20,000 bytes, and a read or write can transfer up to 100,000 UTF-8 bytes per call. Provider failures return MCP tool errors. A command’s nonzero exit code is a normal result. [Input and output schemas](byos.openapi.yaml) · [Provider prerequisites and examples](examples/README.md)
+Each exec call starts a shell. Files persist between calls in the same running sandbox. Pass `cwd` when a command needs a particular working directory. The timeout defaults to 30 seconds and can be set up to 55. Each output stream is limited to 1 MiB. File reads default to 20,000 bytes, and a read or write can transfer up to 100,000 UTF-8 bytes per call. Provider failures return MCP tool errors. A command’s nonzero exit code is a normal result. [Input and output schemas](byos.openapi.yaml) · [Provider prerequisites and examples](examples/README.md)
 
 ## Connect Codex
 
@@ -115,5 +115,7 @@ From a development checkout, install the full dependency set with `npm ci`.
 | `npm run check:drift` | HuggingChat’s current preset, live public schemas and a pinned BERT file read, plus all nine tool schemas and 15 Jobs operations from the pinned package using an offline identity |
 | `node examples/run.mjs PROVIDER ID` | An existing sandbox on any of the three providers, using the operator’s credential |
 | `npm run check:sandbox -- HANDLE` | Hugging Face’s native `hf_sandbox*` tool path, including health, command execution, and root directory metadata |
+
+**Verified for v0.3.0.** All three runnable examples passed their four operations through the HTTP server against provider fixtures. Codex discovered the tools in a clean package install, read a live public BERT checkpoint, and ran the exe.dev example command against a fixture. Live sandbox execution still needs a check with an operator-owned ID and its credential.
 
 After updating the upstream pin, run `npm run capture`, review the OpenAPI diff, then run `npm run generate` and the checks above. [Upstream licenses](notices/)
