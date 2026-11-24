@@ -27,6 +27,16 @@ const result = await hub.hf_fs({
 
 The local server uses the generated tool catalog to select the pinned Hugging Face implementations. Other implementations can supply handlers to `registerMlInternTools`. To compare the YAML with the pinned upstream package, run `npm run capture -- --check`. To refresh the snapshot after updating the dependency, run `npm run capture`, review the YAML diff, and regenerate.
 
+## Drift checks
+
+Run `npm run check:drift` after `npm ci`. The same check runs daily at 08:17 UTC, on pull requests, and on pushes to `main`. You can also run it manually. [GitHub Actions runs](https://github.com/candacelabs/ml-intern-mcp/actions/workflows/drift.yml)
+
+- The live check reads the Hub MCP URL registered by HuggingChat, lists every page of the public `intern` catalog, and compares all tool fields with the generated OpenAPI catalog. A mismatch prints the affected tool and field as a JSON Pointer.
+- The checker starts the Codex `--public-files` server, verifies its advertised tool, and compares a public BERT config read with the hosted response at the same immutable model revision.
+- The signed-in catalog uses the pinned upstream package and a synthetic identity offline. This covers all nine tools and 15 Jobs operation schemas. A change to the hosted server version also fails the check so changes confined to signed-in tools get reviewed.
+
+The check runs without a Hugging Face credential. Drift and incomplete network checks both fail CI. Review the reported difference before updating the pin or regenerating bindings.
+
 ## Use with Codex
 
 Use the Hugging Face app already connected to Codex for account identity, Jobs and other account operations. Register the local server alongside it for public file and paper reads.

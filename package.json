@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node server.mjs",
     "capture": "node scripts/capture-contract.mjs",
+    "check:drift": "node scripts/capture-contract.mjs --check && node scripts/generate.mjs --check && node scripts/check-drift.mjs",
     "generate": "node scripts/generate.mjs",
     "test": "node scripts/generate.mjs --check && tsc --noEmit --strict --module nodenext --target es2022 test/types.mts && node --test test/*.test.mjs"
   },
