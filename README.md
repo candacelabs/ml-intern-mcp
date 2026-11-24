@@ -6,10 +6,10 @@ Use HuggingChat’s ML Intern tools from Codex to read papers, inspect model che
 
 ## Get started
 
-You’ll need Node.js 22.14 or newer and access to this private repository.
+You’ll need Node.js 22.14 or newer.
 
 ```sh
-git clone git@github.com:candacelabs/ml-intern-mcp.git
+git clone https://github.com/candacelabs/ml-intern-mcp.git
 cd ml-intern-mcp
 npm ci --omit=dev
 ```
@@ -17,6 +17,8 @@ npm ci --omit=dev
 From this checkout, you can [try your sandbox](#work-with-an-existing-sandbox) or [connect Codex](#connect-codex).
 
 ## Work with an existing sandbox
+
+**Public preview.** All three providers have passed fixture tests. Live sandbox execution still needs verification.
 
 Choose your provider and export its credentials in your shell. Each provider example shows the requests and results.
 
@@ -187,3 +189,7 @@ Install development dependencies with `npm ci`.
 After changing the upstream pin, run `npm run capture`, review the OpenAPI diff, run `npm run generate`, then rerun the checks. [HuggingChat preset](https://github.com/huggingface/chat-ui/blob/7fc0f672685331f11317a448f24c1c66b64894c6/src/lib/server/mlAssistant.ts) · [Upstream Hub tools](https://github.com/huggingface/hf-mcp-server/blob/df77feaa49795d7fd11dc472f4fa067e7bd2f542/packages/app/src/shared/bouquet-presets.ts) · [License notices](notices/)
 
 </details>
+
+## License
+
+The project’s original code is licensed under Apache 2.0. Third-party components retain their own licenses. [Project license](LICENSE) · [Upstream notices](notices/)

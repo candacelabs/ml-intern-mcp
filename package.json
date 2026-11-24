@@ -2,6 +2,7 @@
   "name": "ml-intern-mcp",
   "version": "0.3.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "HuggingChat's ML Intern Hub tools for your own sandbox, over stdio or Streamable HTTP",
   "type": "module",
   "bin": {
