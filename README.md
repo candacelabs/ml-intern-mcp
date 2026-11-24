@@ -242,7 +242,7 @@ A Linux maintainer can build the release assets with `scripts/build-release.sh .
 | `npm run check:sandbox -- "$HF_SANDBOX_ID"` | Health, shell, and root directory metadata on your existing sandbox via Hugging Face’s native tools |
 | `node examples/run.mjs exe.dev "$EXE_VM"` | Your provider’s status and command execution on an existing sandbox |
 
-**Verification for v0.3.0.** All three providers passed status, command, read, and write checks through HTTP using fixtures. Codex read a live public BERT checkpoint from a clean install. Execution on live provider sandboxes remains unverified.
+**Verified in v0.3.1.** On Linux x64, all three clients registered the public release in an environment without Node.js, npm, or Git on the path. Copilot CLI discovered the installed tools and read the live public BERT checkpoint using a test model to request the call. Provider sandbox operations passed against fixtures. Live sandbox execution and installation on macOS and ARM remain unverified.
 
 After a pin change, these commands capture the schemas, show the changes, regenerate the clients, and verify the result.
 
