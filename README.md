@@ -29,22 +29,24 @@ The local server uses the generated tool catalog to select the pinned Hugging Fa
 
 ## Use with Codex
 
-Register the server and the workflow skill from the checkout after installing dependencies.
+Use the Hugging Face app already connected to Codex for account identity, Jobs and other account operations. Register the local server alongside it for public file and paper reads.
 
 ```sh
-codex mcp add ml_intern -- "$(command -v node)" "$PWD/server.mjs"
+codex mcp add ml_intern -- "$(command -v node)" "$PWD/server.mjs" --public-files
 mkdir -p "$HOME/.agents/skills"
 ln -s "$PWD/skills/ml-intern" "$HOME/.agents/skills/ml-intern"
 ```
 
-Open a new Codex session and ask **“Use $ml-intern to read the BERT paper and verify its base configuration against the checkpoint.”** Codex discovers the registered tools through `tools/list` and sends the selected name and arguments via `tools/call`. The skill guides selection when other Hub integrations are also installed.
+Open a new Codex session and ask **“Use $ml-intern to check which Hugging Face account I’m using and read the BERT checkpoint configuration.”** Codex routes the identity query to the connected app's `hf_whoami` and the public file read to the local `hf_fs`. The public-files process uses anonymous Hub access. The app authorizes its own calls with the existing connection. Its advertised tools determine which account operations Codex can use.
+
+## Standalone MCP clients
+
+Running `node server.mjs` directly exposes the upstream preset. Independent MCP hosts can supply a Hub credential to their server process using `HF_TOKEN`. The tool catalog follows the credential available to that process.
 
 | Access | Tools available |
 | --- | --- |
 | Public | `hf_whoami`, `hf_fs`, `hub_repo_details` |
 | With a Hub credential | All public tools plus `hf_fs_write`, `create_repo`, `hf_jobs`, `hf_sandbox`, `hf_sandbox_exec`, `hf_sandbox_fs` |
-
-Run `hf auth login` and reconnect to load the authenticated catalog. The server reads the active CLI credential at startup. Alternatively, supply `HF_TOKEN` to the server process. For Codex, add `env_vars = ["HF_TOKEN"]` under `[mcp_servers.ml_intern]` to pass the variable by name. Hub permissions determine which operations your credential can perform.
 
 HuggingChat implements its per-conversation spend limit, background poller, and dashboard in the web app. This server exposes the underlying Hub tools. In Codex, a paid run uses the chosen account, hardware, and timeout. [HuggingChat ML Intern architecture](https://huggingface.co/docs/chat-ui/ml-intern/local-development)
 
