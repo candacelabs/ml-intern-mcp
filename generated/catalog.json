@@ -1,0 +1,2894 @@
+{
+  "anonymous": [
+    "hf_fs",
+    "hf_whoami",
+    "hub_repo_details"
+  ],
+  "tools": [
+    {
+      "name": "create_repo",
+      "title": "Create Hugging Face Repository",
+      "description": "Create a Hugging Face model, dataset, Space, or bucket repository using an hf:// destination URI. Set source_uri to duplicate an existing model, dataset, or Space server-side.",
+      "annotations": {
+        "title": "Create Hugging Face Repository",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Destination repo URI in the form hf://models|datasets|spaces|buckets/OWNER/NAME."
+          },
+          "source_uri": {
+            "description": "Optional source repo URI to duplicate, in the form hf://models|datasets|spaces/OWNER/NAME. Must use the same repo type as uri.",
+            "type": "string",
+            "minLength": 1
+          },
+          "private": {
+            "description": "Visibility for the new repo. For duplication, omit to preserve the source visibility; set true for private or false for public.",
+            "type": "boolean"
+          },
+          "sdk": {
+            "description": "Space SDK for new empty Spaces. When duplicating (source_uri set), the Space keeps the source sdk; omit sdk or pass the same value.",
+            "type": "string",
+            "enum": [
+              "streamlit",
+              "gradio",
+              "docker",
+              "static"
+            ]
+          },
+          "hardware": {
+            "description": "Space hardware to start on, for new or duplicated Spaces only (rejected for other repo types). Omit for the free cpu-basic. Examples: cpu-upgrade, zero-a10g, t4-small, t4-medium, l4x1, l4x4, l40sx1, l40sx4, l40sx8, a10g-small, a10g-large, a10g-largex2, a10g-largex4, a100-large, a100x4, a100x8, rtx-pro-6000, rtx-pro-6000x2, rtx-pro-6000x4, rtx-pro-6000x8. Use zero-a10g for ZeroGPU, which needs sdk gradio (the default for new ZeroGPU Spaces) and a PRO account (or a Team/Enterprise plan for an org-owned Space). suggested_hardware in the README does NOT set the hardware; only this parameter does. Paid flavors bill the owner from creation.",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "uri"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "created",
+              "duplicated"
+            ]
+          },
+          "uri": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "repo": {
+            "type": "string"
+          },
+          "repo_type": {
+            "type": "string",
+            "enum": [
+              "model",
+              "dataset",
+              "space",
+              "bucket"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "source_uri": {
+            "type": "string"
+          },
+          "source_repo": {
+            "type": "string"
+          },
+          "sdk": {
+            "type": "string",
+            "enum": [
+              "streamlit",
+              "gradio",
+              "docker",
+              "static"
+            ]
+          },
+          "hardware": {
+            "type": "object",
+            "properties": {
+              "requested": {
+                "type": "string"
+              },
+              "current": {
+                "type": "string"
+              },
+              "stage": {
+                "type": "string"
+              },
+              "confirmed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "requested",
+              "confirmed"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "action",
+          "uri",
+          "url",
+          "repo",
+          "repo_type"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "hf_fs",
+      "title": "Hugging Face Hub: Find, use and view models, datasets, spaces, buckets, papers, documentation and collections. Get daily papers reports, and browse trending content. ",
+      "description": "When to use: Hugging Face Hub models, datasets, Spaces, collections, papers, daily papers, today's trending models, current paper leaderboard, docs; list and read repository files, model and dataset cards (README, license).\n\nExamples:\n  {\"operations\":[{\"cmd\":\"ls\",\"args\":[\"hf://models/trending\",\"--limit\",\"10\"]}]}\n  {\"operations\":[{\"cmd\":\"ls\",\"args\":[\"hf://papers/trending\"]}]}\n  {\"operations\":[{\"cmd\":\"ls\",\"args\":[\"hf://papers/daily/latest\"]}]}\n  {\"operations\":[{\"cmd\":\"cat\",\"args\":[\"hf://papers/2501.00001/paper.md\"]}]}\n  {\"operations\":[{\"cmd\":\"search\",\"args\":[\"hf://models\",\"--tag\",\"base_model:finetune:org/repo\"]}]}\n\nUse hf_fs for Hugging Face Hub filesystem operations. Call it with operations, an array of {cmd, args} items; multiple operations may be submitted together.\n\nUsage:\n  {\"operations\":[{\"cmd\":\"ls\",\"args\":[\"hf://models/org/repo\"]}]}\n\nGrammar; each string below is one args array item:\n  ls     URI [--recursive] [--glob GLOB] [--type TYPE] [--sort SORT] [--limit N]\n  cat    URI [--offset N] [--max-bytes N]\n  attach URI [--max-bytes N]\n  stat   URI\n  find   URI [--name GLOB] [--path GLOB] [--type TYPE] [--limit N]\n  search URI [QUERY] [--type TYPE] [--sort SORT] [--tag TAG] [--kind mcp] [--limit N]\n\nCOMMAND = ls|cat|attach|stat|find|search.\nTYPE = file|dir|repo|bucket|collection|paper|link.\nSORT = createdAt|downloads|likes|lastModified|likes30d|trendingScore|mainSize|id|trending|upvotes.\nURI is a canonical hf:// URI. QUERY and GLOB are each one string.\n\nUse search for resource discovery, not repository-content search; ls for a known directory, find for recursive file discovery by name/path (not file contents), stat for filesystem metadata or an uncertain target type, cat for text contents, and attach for a complete JPEG, PNG, or WebP image. When the request gives an exact text-file URI, use cat directly; do not add ls or stat first. stat does not read the contents of JSON, Markdown, or other text files.\n\nSearch scopes: hf://models[/OWNER], hf://datasets[/OWNER], hf://spaces[/OWNER], hf://collections[/OWNER], hf://papers, and hf://docs[/...]. Repository and repository-file scopes are not supported: search a resource root or owner scope to discover resources; use find for file discovery within a repository or cat for a known text file. Paper and documentation search require QUERY. --tag filters models, datasets, and Spaces by Hub tag (repeatable; all must match) and applies only to hf://models|datasets|spaces[/OWNER]; omit QUERY when the tag already identifies the target, because QUERY also filters repository names. Derived models carry base_model:ID and base_model:RELATION:ID tags, where RELATION is finetune, adapter, merge, or quantized. --kind applies only to hf://spaces[/OWNER]; the only valid --kind value is mcp, which selects MCP Spaces. Tag families are documented at hf://README.md.\nUse ls hf://models/trending, hf://datasets/trending, hf://spaces/trending, or hf://papers/trending for trending listings.\nhf://papers/ID is a paper directory, not paper text. Use cat hf://papers/ID/paper.md for paper text and cat hf://papers/ID/metadata.json for metadata. No preliminary listing is needed for these known paths. Use ls hf://papers/ID to discover other resources.\nOmit --limit, --sort, and --type unless the request requires them. Limits and path-specific behavior are documented at hf://README.md. Issue one hf_fs call.\n\nLinks: hf://models|datasets|spaces/OWNER/NAME/PATH maps to https://huggingface.co[/datasets|/spaces]/OWNER/NAME/resolve/main/PATH (buckets: https://huggingface.co/buckets/OWNER/NAME/resolve/PATH); URL-encode each path segment. arXiv ids (for example 2502.16161) link papers, models and datasets.",
+      "annotations": {
+        "title": "Hugging Face Hub: Find, use and view models, datasets, spaces, buckets, papers, documentation and collections. Get daily papers reports, and browse trending content. ",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "operations": {
+            "minItems": 1,
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "cmd": {
+                  "type": "string",
+                  "enum": [
+                    "ls",
+                    "cat",
+                    "attach",
+                    "stat",
+                    "find",
+                    "search"
+                  ],
+                  "description": "Command to execute."
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Command arguments. First item must be an hf:// URI, not a local path or bare filename. One argument per array item. search discovers resources, not repository contents; use root/owner discovery scopes, find for file discovery, or cat for a known text file. --tag requires hf://models|datasets|spaces[/OWNER]; --kind requires hf://spaces[/OWNER] and its only valid value is mcp."
+                }
+              },
+              "required": [
+                "cmd",
+                "args"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "operations"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "minItems": 1,
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "index": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "status": {
+                      "type": "string",
+                      "const": "success"
+                    },
+                    "result": {
+                      "type": "object",
+                      "properties": {
+                        "uri": {
+                          "type": "string"
+                        },
+                        "op": {
+                          "type": "string",
+                          "enum": [
+                            "ls",
+                            "cat",
+                            "attach",
+                            "stat",
+                            "find",
+                            "search"
+                          ]
+                        },
+                        "entries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "file",
+                                  "dir",
+                                  "repo",
+                                  "bucket",
+                                  "collection",
+                                  "paper",
+                                  "link"
+                                ]
+                              },
+                              "path": {
+                                "type": "string"
+                              },
+                              "uri": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "target_uri": {
+                                "type": "string"
+                              },
+                              "repo_type": {
+                                "type": "string",
+                                "enum": [
+                                  "model",
+                                  "dataset",
+                                  "space",
+                                  "bucket"
+                                ]
+                              },
+                              "size": {
+                                "type": "number"
+                              },
+                              "total_files": {
+                                "type": "number"
+                              },
+                              "lfs": {
+                                "type": "boolean"
+                              },
+                              "private": {
+                                "type": "boolean"
+                              },
+                              "gated": {
+                                "anyOf": [
+                                  {
+                                    "type": "boolean",
+                                    "const": false
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "auto",
+                                      "manual"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "likes": {
+                                "type": "number"
+                              },
+                              "downloads": {
+                                "type": "number"
+                              },
+                              "task": {
+                                "type": "string"
+                              },
+                              "library": {
+                                "type": "string"
+                              },
+                              "tags": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "trending_score": {
+                                "type": "number"
+                              },
+                              "sdk": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "category": {
+                                "type": "string"
+                              },
+                              "semantic_relevance": {
+                                "type": "number"
+                              },
+                              "anchor": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "type": "string"
+                              },
+                              "upvotes": {
+                                "type": "number"
+                              },
+                              "created_at": {
+                                "type": "string"
+                              },
+                              "published_at": {
+                                "type": "string"
+                              },
+                              "daily_papers_date": {
+                                "type": "string"
+                              },
+                              "daily_papers_uri": {
+                                "type": "string"
+                              },
+                              "url": {
+                                "type": "string"
+                              },
+                              "arxiv_url": {
+                                "type": "string"
+                              },
+                              "observed_at": {
+                                "type": "string"
+                              },
+                              "updated_at": {
+                                "type": "string"
+                              },
+                              "content_type": {
+                                "type": "string",
+                                "enum": [
+                                  "application/json",
+                                  "text/markdown"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "path"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "path": {
+                          "type": "string"
+                        },
+                        "content": {
+                          "type": "string"
+                        },
+                        "content_type": {
+                          "type": "string",
+                          "enum": [
+                            "application/json",
+                            "text/markdown"
+                          ]
+                        },
+                        "mime_type": {
+                          "type": "string",
+                          "enum": [
+                            "image/jpeg",
+                            "image/png",
+                            "image/webp"
+                          ]
+                        },
+                        "section": {
+                          "type": "string"
+                        },
+                        "bytes": {
+                          "type": "number"
+                        },
+                        "exists": {
+                          "type": "boolean"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "namespace",
+                            "repo",
+                            "dir",
+                            "file",
+                            "collection",
+                            "paper",
+                            "link",
+                            "missing"
+                          ]
+                        },
+                        "namespace": {
+                          "type": "string"
+                        },
+                        "size": {
+                          "type": "number"
+                        },
+                        "lfs": {
+                          "type": "boolean"
+                        },
+                        "target_uri": {
+                          "type": "string"
+                        },
+                        "published_at": {
+                          "type": "string"
+                        },
+                        "daily_papers_date": {
+                          "type": "string"
+                        },
+                        "daily_papers_uri": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string"
+                        },
+                        "arxiv_url": {
+                          "type": "string"
+                        },
+                        "truncated": {
+                          "type": "boolean"
+                        },
+                        "truncation_reason": {
+                          "type": "string",
+                          "enum": [
+                            "entry_limit",
+                            "max_bytes",
+                            "limit",
+                            "provider_limit",
+                            "output_budget"
+                          ]
+                        },
+                        "truncation_message": {
+                          "type": "string"
+                        },
+                        "next_offset": {
+                          "type": "number"
+                        },
+                        "warnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "uri",
+                        "op"
+                      ],
+                      "additionalProperties": false,
+                      "allOf": [
+                        {
+                          "if": {
+                            "properties": {
+                              "op": {
+                                "const": "attach"
+                              }
+                            },
+                            "required": [
+                              "op"
+                            ]
+                          },
+                          "then": {
+                            "properties": {
+                              "path": {
+                                "type": "string"
+                              },
+                              "mime_type": {
+                                "type": "string",
+                                "enum": [
+                                  "image/jpeg",
+                                  "image/png",
+                                  "image/webp"
+                                ]
+                              },
+                              "bytes": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 8388608
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "mime_type",
+                              "bytes"
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    "output_truncated": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "index",
+                    "status",
+                    "result"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "index": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "status": {
+                      "type": "string",
+                      "const": "error"
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "HF_FS_INVALID_ARGUMENT",
+                            "HF_FS_NOT_FOUND",
+                            "HF_FS_NOT_A_DIRECTORY",
+                            "HF_FS_NOT_A_FILE",
+                            "HF_FS_UNSUPPORTED_OPERATION",
+                            "HF_FS_ACCESS_DENIED",
+                            "HF_FS_TEXT_ONLY",
+                            "HF_FS_IMAGE_ONLY",
+                            "HF_FS_UNSUPPORTED_MEDIA",
+                            "HF_FS_IMAGE_TOO_LARGE",
+                            "HF_FS_ATTACHMENT_BUDGET_EXCEEDED",
+                            "HF_FS_IMAGE_CONTENT_DISABLED",
+                            "HF_FS_ATTACHMENT_INTEGRITY"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "recovery": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean",
+                          "const": false
+                        },
+                        "suggestedOperation": {
+                          "type": "string",
+                          "enum": [
+                            "ls",
+                            "cat",
+                            "attach",
+                            "stat",
+                            "search"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "recovery",
+                        "retryable"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "index",
+                    "status",
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "truncation_reason": {
+            "type": "string",
+            "const": "output_budget"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "hf_fs_write",
+      "title": "Hugging Face File Writes",
+      "description": "Write or remove files in Hugging Face repositories and buckets.\n\nGrammar; each token below is one args array element:\n  put URI [--base64] [(-m|--message) MESSAGE] [--description DESCRIPTION]\n          [--branch BRANCH] [--create-pr] [--parent-commit SHA]\n  rm  URI [(-m|--message) MESSAGE] [--description DESCRIPTION]\n          [--branch BRANCH] [--create-pr] [--parent-commit SHA]\n\nURI must be an hf://models|datasets|spaces|buckets/OWNER/NAME/PATH file URI.\nFor put, provide file data in the separate content field. Content is UTF-8 text unless --base64 is present.\nUse --create-pr to propose a change when direct repository writes are unavailable or undesirable.\nBranches, pull requests, descriptions, and parent commits are not supported for buckets.\nA URI '@revision' and --branch are equivalent; do not specify conflicting values.\n--parent-commit must be a 40-character Git commit SHA and prevents overwriting concurrent changes.\nNo pipes, redirects, shell expansion, or multiple commands.",
+      "annotations": {
+        "title": "Hugging Face File Writes",
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "cmd": {
+            "type": "string",
+            "enum": [
+              "put",
+              "rm"
+            ],
+            "description": "Command to execute."
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Command arguments; each array item is one grammar token."
+          },
+          "content": {
+            "description": "File content for put. UTF-8 text by default; base64 when args includes --base64.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cmd",
+          "args"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "op": {
+            "type": "string",
+            "enum": [
+              "put",
+              "rm"
+            ]
+          },
+          "repo": {
+            "type": "string"
+          },
+          "repo_type": {
+            "type": "string",
+            "enum": [
+              "model",
+              "dataset",
+              "space",
+              "bucket"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "number"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "commit": {
+            "type": "object",
+            "properties": {
+              "oid": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "oid",
+              "url"
+            ],
+            "additionalProperties": false
+          },
+          "pull_request_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uri",
+          "op",
+          "repo",
+          "repo_type",
+          "path",
+          "message"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "hf_jobs",
+      "title": "Hugging Face Jobs",
+      "description": "Remote compute on CPU or GPU hardware (e.g. A100, H200) for Hugging Face workflows: run Python/UV scripts or Docker containers remotely. Run Python/UV or Docker jobs to deeply analyze Hub datasets, repos, traces, models, and large files; compute trends/statistics; run batch inference/evaluation; or perform long-running work with installed libraries. Use for dataset/repo analysis prompts when local chat inspection is insufficient. Includes submit, logs, inspect, cancel, schedule, labels/names, and volume mounting. Minimal run: {\"operation\":\"run\",\"args\":{\"image\":\"python:3.12\",\"command\":[\"python\",\"-c\",\"print(123)\"]}}. Command arrays are literal argv; strings tokenize quotes and escaping, not shell execution. For pipes, chaining, redirections, or variable expansion, explicitly use [\"/bin/sh\", \"-lc\", \"...\"] only if the image provides that shell. Help: {\"operation\":\"run\",\"args\":{\"help\":true}}; full usage: {}. Follow up with logs or inspect using args: {\"job_id\":\"<returned job ID>\"}.",
+      "annotations": {
+        "title": "Hugging Face Jobs",
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "description": "Operation to execute. Valid values: \"run\", \"uv\", \"ps\", \"logs\", \"inspect\", \"cancel\", \"update-labels\", \"scheduled update-labels\", \"scheduled run\", \"scheduled uv\", \"scheduled ps\", \"scheduled inspect\", \"scheduled delete\", \"scheduled suspend\", \"scheduled resume\"",
+            "type": "string",
+            "enum": [
+              "run",
+              "uv",
+              "ps",
+              "logs",
+              "inspect",
+              "cancel",
+              "update-labels",
+              "scheduled update-labels",
+              "scheduled run",
+              "scheduled uv",
+              "scheduled ps",
+              "scheduled inspect",
+              "scheduled delete",
+              "scheduled suspend",
+              "scheduled resume"
+            ]
+          },
+          "args": {
+            "description": "Operation-specific arguments as a JSON object",
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "run",
+              "uv",
+              "ps",
+              "logs",
+              "inspect",
+              "cancel",
+              "update-labels",
+              "scheduled update-labels",
+              "scheduled run",
+              "scheduled uv",
+              "scheduled ps",
+              "scheduled inspect",
+              "scheduled delete",
+              "scheduled suspend",
+              "scheduled resume"
+            ]
+          },
+          "outcome": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "usage"
+                  },
+                  "available_operations": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "run",
+                        "uv",
+                        "ps",
+                        "logs",
+                        "inspect",
+                        "cancel",
+                        "update-labels",
+                        "scheduled update-labels",
+                        "scheduled run",
+                        "scheduled uv",
+                        "scheduled ps",
+                        "scheduled inspect",
+                        "scheduled delete",
+                        "scheduled suspend",
+                        "scheduled resume"
+                      ]
+                    }
+                  },
+                  "instructions": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "available_operations",
+                  "instructions"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "help"
+                  },
+                  "operation": {
+                    "type": "string",
+                    "enum": [
+                      "run",
+                      "uv",
+                      "ps",
+                      "logs",
+                      "inspect",
+                      "cancel",
+                      "update-labels",
+                      "scheduled update-labels",
+                      "scheduled run",
+                      "scheduled uv",
+                      "scheduled ps",
+                      "scheduled inspect",
+                      "scheduled delete",
+                      "scheduled suspend",
+                      "scheduled resume"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "requested",
+                      "missing_arguments"
+                    ]
+                  },
+                  "instructions": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "operation",
+                  "reason",
+                  "instructions"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "job"
+                  },
+                  "job": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "url": {
+                        "type": "string"
+                      },
+                      "endpoint": {
+                        "type": "string"
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "finished_at": {
+                        "type": "string"
+                      },
+                      "docker_image": {
+                        "type": "string"
+                      },
+                      "space_id": {
+                        "type": "string"
+                      },
+                      "command": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "arguments": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "environment_variable_names": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "secret_names": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "flavor": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "object",
+                        "properties": {
+                          "stage": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "expose_urls": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "stage"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "owner": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "org"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "created_by": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "org"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "labels": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      },
+                      "timeout_seconds": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "created_at",
+                      "environment_variable_names",
+                      "secret_names",
+                      "flavor",
+                      "status",
+                      "owner"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "logs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "logs_finished": {
+                    "type": "boolean"
+                  },
+                  "logs_truncated": {
+                    "type": "boolean"
+                  },
+                  "logs_error": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "job"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "jobs"
+                  },
+                  "jobs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string"
+                        },
+                        "endpoint": {
+                          "type": "string"
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "finished_at": {
+                          "type": "string"
+                        },
+                        "docker_image": {
+                          "type": "string"
+                        },
+                        "space_id": {
+                          "type": "string"
+                        },
+                        "command": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "arguments": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "environment_variable_names": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "secret_names": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "flavor": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "object",
+                          "properties": {
+                            "stage": {
+                              "type": "string"
+                            },
+                            "message": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "expose_urls": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "stage"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "owner": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "user",
+                                "org"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "created_by": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "user",
+                                "org"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "labels": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "timeout_seconds": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "created_at",
+                        "environment_variable_names",
+                        "secret_names",
+                        "flavor",
+                        "status",
+                        "owner"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "total_jobs": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "kind",
+                  "jobs",
+                  "total_jobs"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "logs"
+                  },
+                  "job_id": {
+                    "type": "string"
+                  },
+                  "lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "finished": {
+                    "type": "boolean"
+                  },
+                  "truncated": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "job_id",
+                  "lines",
+                  "finished",
+                  "truncated"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "inspections"
+                  },
+                  "requested_job_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "inspections": {
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "job_id": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "const": "success"
+                            },
+                            "job": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "url": {
+                                  "type": "string"
+                                },
+                                "endpoint": {
+                                  "type": "string"
+                                },
+                                "created_at": {
+                                  "type": "string"
+                                },
+                                "finished_at": {
+                                  "type": "string"
+                                },
+                                "docker_image": {
+                                  "type": "string"
+                                },
+                                "space_id": {
+                                  "type": "string"
+                                },
+                                "command": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "arguments": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "environment_variable_names": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "secret_names": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "flavor": {
+                                  "type": "string"
+                                },
+                                "status": {
+                                  "type": "object",
+                                  "properties": {
+                                    "stage": {
+                                      "type": "string"
+                                    },
+                                    "message": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "expose_urls": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "stage"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "owner": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "user",
+                                        "org"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "name"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "created_by": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "user",
+                                        "org"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "name"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "tags": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "labels": {
+                                  "type": "object",
+                                  "propertyNames": {
+                                    "type": "string"
+                                  },
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  }
+                                },
+                                "timeout_seconds": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "created_at",
+                                "environment_variable_names",
+                                "secret_names",
+                                "flavor",
+                                "status",
+                                "owner"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "job_id",
+                            "status",
+                            "job"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "job_id": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "const": "error"
+                            },
+                            "message": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "job_id",
+                            "status",
+                            "message"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "kind",
+                  "requested_job_ids",
+                  "inspections"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "scheduled_job"
+                  },
+                  "scheduled_job": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "schedule": {
+                        "type": "string"
+                      },
+                      "suspended": {
+                        "type": "boolean"
+                      },
+                      "last_run": {
+                        "type": "string"
+                      },
+                      "next_run": {
+                        "type": "string"
+                      },
+                      "owner": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "org"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "job_spec": {
+                        "type": "object",
+                        "properties": {
+                          "docker_image": {
+                            "type": "string"
+                          },
+                          "space_id": {
+                            "type": "string"
+                          },
+                          "command": {
+                            "description": "Absent when the image's default command runs.",
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "arguments": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "environment_variable_names": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "secret_names": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "flavor": {
+                            "type": "string"
+                          },
+                          "timeout_seconds": {
+                            "type": "number"
+                          },
+                          "volumes": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "bucket",
+                                    "model",
+                                    "dataset",
+                                    "space"
+                                  ]
+                                },
+                                "source": {
+                                  "type": "string"
+                                },
+                                "mount_path": {
+                                  "type": "string"
+                                },
+                                "revision": {
+                                  "type": "string"
+                                },
+                                "read_only": {
+                                  "type": "boolean"
+                                },
+                                "path": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "source",
+                                "mount_path"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "labels": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          },
+                          "exposed_ports": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          }
+                        },
+                        "required": [
+                          "environment_variable_names",
+                          "secret_names",
+                          "flavor"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "schedule",
+                      "suspended",
+                      "owner",
+                      "created_at",
+                      "job_spec"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "kind",
+                  "scheduled_job"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "scheduled_jobs"
+                  },
+                  "scheduled_jobs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "schedule": {
+                          "type": "string"
+                        },
+                        "suspended": {
+                          "type": "boolean"
+                        },
+                        "last_run": {
+                          "type": "string"
+                        },
+                        "next_run": {
+                          "type": "string"
+                        },
+                        "owner": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "user",
+                                "org"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "job_spec": {
+                          "type": "object",
+                          "properties": {
+                            "docker_image": {
+                              "type": "string"
+                            },
+                            "space_id": {
+                              "type": "string"
+                            },
+                            "command": {
+                              "description": "Absent when the image's default command runs.",
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "arguments": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "environment_variable_names": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "secret_names": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "flavor": {
+                              "type": "string"
+                            },
+                            "timeout_seconds": {
+                              "type": "number"
+                            },
+                            "volumes": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "bucket",
+                                      "model",
+                                      "dataset",
+                                      "space"
+                                    ]
+                                  },
+                                  "source": {
+                                    "type": "string"
+                                  },
+                                  "mount_path": {
+                                    "type": "string"
+                                  },
+                                  "revision": {
+                                    "type": "string"
+                                  },
+                                  "read_only": {
+                                    "type": "boolean"
+                                  },
+                                  "path": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "source",
+                                  "mount_path"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "labels": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string"
+                              },
+                              "additionalProperties": {
+                                "type": "string"
+                              }
+                            },
+                            "exposed_ports": {
+                              "type": "array",
+                              "items": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            }
+                          },
+                          "required": [
+                            "environment_variable_names",
+                            "secret_names",
+                            "flavor"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "schedule",
+                        "suspended",
+                        "owner",
+                        "created_at",
+                        "job_spec"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "total_scheduled_jobs": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "kind",
+                  "scheduled_jobs",
+                  "total_scheduled_jobs"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "acknowledgement"
+                  },
+                  "resource_id": {
+                    "type": "string"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "canceled",
+                      "deleted",
+                      "suspended",
+                      "resumed"
+                    ]
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "resource_id",
+                  "action",
+                  "message"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "unavailable"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "upgrade_url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "message"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "error"
+                  },
+                  "code": {
+                    "type": "string",
+                    "enum": [
+                      "unknown_operation",
+                      "validation",
+                      "execution"
+                    ]
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "code",
+                  "message"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "total_results": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "results_shared": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "outcome",
+          "total_results",
+          "results_shared"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "hf_sandbox",
+      "title": "Hugging Face Sandbox",
+      "description": "Create and manage Hugging Face Sandboxes.\n\nGrammar; each token below is one args array element:\n  create [--name NAME] [--image IMAGE] [--flavor FLAVOR] [--timeout DURATION]\n         [--namespace NAMESPACE] [--resource-group-id ID] [--forward-hf-token] [--volume SPEC]...\n         [--bucket OWNER/NAME] [--bucket-mode ro|rw] [--bucket-mount-path PATH]\n  status HANDLE\n  terminate HANDLE\n  ps HANDLE\n  kill HANDLE PROCESS_ID\n\nHANDLE is returned by create. Volume SPEC is hf://[models|datasets|spaces|buckets]/OWNER/NAME[/PATH]:/MOUNT_PATH[:ro|:rw].\nNo pipes, redirects, shell expansion, or multiple commands.",
+      "annotations": {
+        "title": "Hugging Face Sandbox",
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "cmd": {
+            "type": "string",
+            "enum": [
+              "create",
+              "status",
+              "terminate",
+              "ps",
+              "kill"
+            ],
+            "description": "Command to execute."
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Command arguments; each array item is one grammar token. Sandbox handle returned by hf_sandbox create. Use this value for future sandbox operations. Accepted forms: hfsb2:NAMESPACE:JOB_ID, NAMESPACE/JOB_ID, or a bare job id."
+          }
+        },
+        "required": [
+          "cmd",
+          "args"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "create",
+              "status",
+              "terminate",
+              "ps",
+              "kill"
+            ]
+          },
+          "handle": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "job_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "job_url": {
+            "type": "string"
+          },
+          "volumes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            }
+          },
+          "message": {
+            "type": "string"
+          },
+          "status": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "health": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "terminated": {
+            "type": "boolean"
+          },
+          "processes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            }
+          },
+          "process_id": {
+            "type": "string"
+          },
+          "killed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "op"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "hf_sandbox_exec",
+      "title": "Hugging Face Sandbox Exec",
+      "description": "Run a shell command inside a Hugging Face Sandbox.\n\nGrammar; each token below is one args array element:\n  exec HANDLE SHELL_COMMAND [--workdir PATH] [--stdin TEXT] [--timeout SECONDS]\n       [--env NAME=VALUE]... [--detach] [--tag TAG]\n\nSHELL_COMMAND is one string token and runs via /bin/sh -lc.\nForeground timeout defaults to 30 seconds and may not exceed 55.\nDetached commands have no timeout unless set. Redirect detached output to a file.",
+      "annotations": {
+        "title": "Hugging Face Sandbox Exec",
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "cmd": {
+            "type": "string",
+            "enum": [
+              "exec"
+            ],
+            "description": "Command to execute."
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Command arguments; each array item is one grammar token. Sandbox handle returned by hf_sandbox create. Use this value for future sandbox operations. Accepted forms: hfsb2:NAMESPACE:JOB_ID, NAMESPACE/JOB_ID, or a bare job id."
+          }
+        },
+        "required": [
+          "cmd",
+          "args"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "returncode": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "stdout": {
+            "type": "string"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "signal": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "timed_out": {
+            "type": "boolean"
+          },
+          "duration_ms": {
+            "type": "number"
+          },
+          "detached": {
+            "type": "boolean"
+          },
+          "process_id": {
+            "type": "string"
+          },
+          "pid": {
+            "type": "number"
+          },
+          "tag": {
+            "type": "string"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "hf_sandbox_fs",
+      "title": "Hugging Face Sandbox Files",
+      "description": "Read, write and manage files inside a Hugging Face Sandbox.\n\nGrammar; each token below is one args array element:\n  ls HANDLE PATH\n  cat HANDLE PATH [--offset N] [--max-bytes N]\n  stat HANDLE PATH\n  write HANDLE PATH (--text TEXT|--base64 BASE64)\n  rm HANDLE PATH [(-r|-R|--recursive)]\n  mkdir HANDLE PATH\n\nPATH is an absolute path inside the sandbox. cat defaults to 20000 bytes and allows at most 100000.",
+      "annotations": {
+        "title": "Hugging Face Sandbox Files",
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "cmd": {
+            "type": "string",
+            "enum": [
+              "ls",
+              "cat",
+              "stat",
+              "write",
+              "rm",
+              "mkdir"
+            ],
+            "description": "Command to execute."
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Command arguments; each array item is one grammar token. Sandbox handle returned by hf_sandbox create. Use this value for future sandbox operations. Accepted forms: hfsb2:NAMESPACE:JOB_ID, NAMESPACE/JOB_ID, or a bare job id."
+          }
+        },
+        "required": [
+          "cmd",
+          "args"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "ls",
+              "cat",
+              "stat",
+              "write",
+              "rm",
+              "mkdir"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            }
+          },
+          "content": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "number"
+          },
+          "size": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "next_offset": {
+            "type": "number"
+          },
+          "exists": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "file",
+              "dir",
+              "symlink"
+            ]
+          },
+          "mtime_ms": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "mode": {
+            "type": "string"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "created": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "op",
+          "path"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "hf_whoami",
+      "title": "Hugging Face User Info",
+      "description": "Inspect the current Hugging Face authentication context, including the account, visible organization memberships, and credential access details. Read-only and never returns credential values.",
+      "annotations": {
+        "title": "Hugging Face User Info",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      },
+      "outputSchema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "const": "authenticated"
+              },
+              "account": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "user",
+                      "org",
+                      "app"
+                    ]
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "is_pro": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "id",
+                  "type",
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              "organizations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "display_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "role": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "plan": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "security_restrictions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "resource_groups": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "role": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "role"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "display_name",
+                    "url"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "credential": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "personal_access_token"
+                      },
+                      "role": {
+                        "type": "string",
+                        "enum": [
+                          "read",
+                          "write",
+                          "fine_grained"
+                        ]
+                      },
+                      "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      "permissions": {
+                        "type": "object",
+                        "properties": {
+                          "scoped": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "entity": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "model",
+                                        "dataset",
+                                        "space",
+                                        "bucket",
+                                        "kernel",
+                                        "collection",
+                                        "org",
+                                        "user",
+                                        "resource_group",
+                                        "oauth_app"
+                                      ]
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "type"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "permissions": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "restrictions": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "resource_type": {
+                                        "type": "string",
+                                        "const": "inference_endpoint"
+                                      },
+                                      "patterns": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "resource_type",
+                                      "patterns"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "entity",
+                                "permissions"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "global": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "can_read_gated_repos": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "scoped"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "role"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "oauth"
+                      },
+                      "expires_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      "scopes": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "app_token"
+                      },
+                      "role": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "entities": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "model",
+                                "dataset",
+                                "space",
+                                "bucket",
+                                "kernel",
+                                "org"
+                              ]
+                            },
+                            "name": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "entities"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "other"
+                      },
+                      "expires_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "status",
+              "account",
+              "organizations",
+              "credential"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "const": "anonymous"
+              },
+              "account": {
+                "type": "null"
+              },
+              "organizations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "display_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "role": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "plan": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "security_restrictions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "resource_groups": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "role": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "role"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "display_name",
+                    "url"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "credential": {
+                "type": "null"
+              },
+              "guidance": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "status",
+              "account",
+              "organizations",
+              "credential",
+              "guidance"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "const": "authentication_unverified"
+              },
+              "account": {
+                "type": "null"
+              },
+              "organizations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "display_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "role": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "plan": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "security_restrictions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "resource_groups": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "role": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "role"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "display_name",
+                    "url"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "credential": {
+                "type": "null"
+              },
+              "guidance": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "status",
+              "account",
+              "organizations",
+              "credential",
+              "guidance"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "hub_repo_details",
+      "title": "Hub Repository Details",
+      "description": "Get details for one or more Hugging Face repos (model, dataset, or space): card metadata, license, downloads, files, Space hardware/status, dataset configs, splits, columns and preview rows. Auto-detects type unless specified. For datasets, use operations: overview, dataset_structure, dataset_preview. Use dataset_structure first to discover configs, splits, sizes, and schema. Use dataset_preview only when config and split are known, unless the dataset has a single config/split.",
+      "annotations": {
+        "title": "Hub Repository Details",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo_ids": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Repo IDs for (models|dataset/space) - usually in author/name format (e.g. openai/gpt-oss-120b)"
+          },
+          "repo_type": {
+            "description": "Specify lookup type; otherwise auto-detects",
+            "type": "string",
+            "enum": [
+              "model",
+              "dataset",
+              "space"
+            ]
+          },
+          "operations": {
+            "description": "Details to return. Defaults to [\"overview\"]. For datasets, prefer [\"overview\", \"dataset_structure\"] first; then call [\"dataset_preview\"] with config and split.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "overview",
+                "dataset_structure",
+                "dataset_preview"
+              ]
+            }
+          },
+          "config": {
+            "description": "Dataset Viewer config. Required for dataset_preview when the dataset has multiple config/split options. Discover via dataset_structure.",
+            "type": "string"
+          },
+          "split": {
+            "description": "Dataset Viewer split. Required for dataset_preview when the dataset has multiple config/split options. Discover via dataset_structure.",
+            "type": "string"
+          },
+          "offset": {
+            "description": "Row offset for dataset_preview. Defaults to 0.",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "limit": {
+            "description": "Row count for dataset_preview. Defaults to 5 and is clamped to 1-100.",
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "repo_ids"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      }
+    }
+  ]
+}

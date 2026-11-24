@@ -1,0 +1,30 @@
+{
+  "name": "ml-intern-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HuggingChat's ML Intern Hub tool preset over local MCP stdio for Codex",
+  "type": "module",
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "capture": "node scripts/capture-contract.mjs",
+    "generate": "node scripts/generate.mjs",
+    "test": "node scripts/generate.mjs --check && tsc --noEmit --strict --module nodenext --target es2022 test/types.mts && node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@llmindset/hf-mcp-server": "0.4.39",
+    "@modelcontextprotocol/server": "2.4.0"
+  },
+  "devDependencies": {
+    "@llmindset/hf-mcp": "0.4.39",
+    "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/core": "2.4.0",
+    "@types/node": "22.20.5",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3",
+    "yaml": "2.9.1",
+    "zod": "4.6.6"
+  }
+}
